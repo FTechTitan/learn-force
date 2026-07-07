@@ -183,6 +183,7 @@ Deno.serve(async (req: Request) => {
         subtitle: course.subtitle ? String(course.subtitle) : null,
         description: course.description ? String(course.description) : null,
         emoji: course.emoji ? String(course.emoji) : "📚",
+        media: course.media || {},
         sort_order: Number(course.sort_order || 0),
         is_published: Boolean(course.is_published),
         created_by: caller.id,
@@ -205,6 +206,7 @@ Deno.serve(async (req: Request) => {
         emoji: module.emoji ? String(module.emoji) : "📦",
         intro: module.intro ? String(module.intro) : null,
         theory: module.theory ? String(module.theory) : null,
+        media: module.media || {},
         sort_order: Number(module.sort_order || 0),
         is_published: module.is_published !== false,
       };

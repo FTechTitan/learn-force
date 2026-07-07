@@ -109,6 +109,7 @@ function normalizarCurso(row) {
       emoji: m.emoji || "📦",
       intro: m.intro || "",
       teoria: m.theory || "",
+      media: m.media || null,
       ejercicios: (m.course_items || [])
         .slice()
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
@@ -135,6 +136,7 @@ function normalizarCurso(row) {
     descripcion: row.description || "",
     emoji: row.emoji || "📚",
     source: "remote",
+    media: row.media || null,
     modulos: modules,
   };
 }
@@ -149,6 +151,7 @@ const CursosRemotos = {
         subtitle,
         description,
         emoji,
+        media,
         sort_order,
         course_modules (
           id,
@@ -156,6 +159,7 @@ const CursosRemotos = {
           emoji,
           intro,
           theory,
+          media,
           sort_order,
           course_items!course_items_module_course_fk (
             id,

@@ -14,11 +14,12 @@
   let modulosInfo = [];       // [{ id, titulo, emoji, ids:[...] }]
   let totalEjercicios = 0;    // total de ejercicios del curso
 
-  // Mapa id->título y estructura de módulos desde el currículo.
+  // Mapa id->título y estructura de módulos desde el curso remoto activo.
   function indexarTitulos() {
     modulosInfo = [];
     totalEjercicios = 0;
-    (window.CURRICULUM || []).forEach((m) => {
+    const mods = (window.ProgresoApp && window.ProgresoApp.modulosActuales()) || [];
+    mods.forEach((m) => {
       const ids = (m.ejercicios || []).map((e) => {
         titulosEjercicios[e.id] = e.titulo;
         return e.id;

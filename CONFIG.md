@@ -217,7 +217,11 @@ curl https://api.elevenlabs.io/v1/convai/agents/agent_5101ktde7saxeews5gr563y7py
 ## 🚀 Flujo de actualización
 
 ```bash
-# editar archivos (ej. js/data.js para nuevos ejercicios)
+# editar archivos de la app o crear migraciones Supabase si cambia el modelo
 git add -A && git commit -m "feat: ..." && git push
 # ~1 min después se actualiza solo en progra-uai.pages.dev
 ```
+
+Los cursos y ejercicios se administran en Supabase (`courses`,
+`course_modules`, `course_items`) o desde el panel admin; no hay currículo
+local hardcodeado en el frontend.

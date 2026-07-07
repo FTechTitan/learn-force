@@ -18,10 +18,14 @@
   let timerId = null;
 
   // --- ¿Qué módulos están completos? --------------------------------------
+  function modulosCursoActual() {
+    return (window.ProgresoApp && window.ProgresoApp.modulosActuales()) || [];
+  }
+
   function modulosCompletos() {
     const comp = (window.ProgresoApp && window.ProgresoApp.completados()) || {};
     const set = new Set();
-    (window.CURRICULUM || []).forEach((m) => {
+    modulosCursoActual().forEach((m) => {
       const todos = m.ejercicios.every((e) => comp[e.id]);
       if (todos && m.ejercicios.length) set.add(m.id);
     });
@@ -29,7 +33,7 @@
   }
 
   function tituloModulo(id) {
-    const m = (window.CURRICULUM || []).find((x) => x.id === id);
+    const m = modulosCursoActual().find((x) => x.id === id);
     return m ? m.titulo : id;
   }
 
@@ -48,6 +52,11 @@
 
   // --- Modal de introducción / requisitos ---------------------------------
   async function abrirIntro() {
+    const curso = window.ProgresoApp && window.ProgresoApp.cursoActual();
+    if (!curso || curso.id !== "python-de-a-poco") {
+      alert("Selecciona el curso Python de a poco para rendir esta prueba.");
+      return;
+    }
     const prueba = (window.PRUEBAS || [])[0];
     if (!prueba) return;
 

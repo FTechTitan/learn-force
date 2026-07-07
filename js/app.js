@@ -10,25 +10,15 @@
 
   const STORAGE_KEY = "progra-uai-progreso-v1";
   const COURSE_STORAGE_KEY = "progra-uai-curso-activo-v1";
-  let cursos = (window.LOCAL_COURSES && window.LOCAL_COURSES.length)
-    ? window.LOCAL_COURSES.slice()
-    : [{
-        id: "python-de-a-poco",
-        titulo: "Python de a poco",
-        subtitle: "Aprende programando · curso UAI",
-        emoji: "🐍",
-        source: "local",
-        modulos: window.CURRICULUM || [],
-        media: window.COURSE_MEDIA || null,
-      }];
-  let cursoActual = cursos[0];
-  let modulos = cursoActual.modulos || [];
+  let cursos = [];
+  let cursoActual = null;
+  let modulos = [];
 
   // Lista plana de ejercicios en orden, con referencia a su módulo.
   let ejerciciosPlanos = [];
 
   function reconstruirEjerciciosPlanos() {
-    modulos = cursoActual.modulos || [];
+    modulos = cursoActual ? (cursoActual.modulos || []) : [];
     ejerciciosPlanos = [];
     modulos.forEach((m) => {
       (m.ejercicios || []).forEach((e) => ejerciciosPlanos.push({ ...e, moduloId: m.id, moduloTitulo: m.titulo }));
@@ -55,30 +45,50 @@
 
   const estado = cargarProgreso();
 
-  function elegirCursoInicial() {
-    const guardado = localStorage.getItem(COURSE_STORAGE_KEY);
-    cursoActual = cursos.find((c) => c.id === guardado) || cursos[0];
-    reconstruirEjerciciosPlanos();
-  }
-
   function pintarSelectorCursos() {
     if (!courseSelect) return;
-    courseSelect.innerHTML = cursos
-      .map((c) => `<option value="${c.id}">${c.emoji || "📚"} ${c.titulo}${c.source === "remote" ? "" : " · local"}</option>`)
+    const opciones = cursos
+      .map((c) => `<option value="${c.id}">${c.emoji || "📚"} ${c.titulo}</option>`)
       .join("");
-    courseSelect.value = cursoActual.id;
+    courseSelect.innerHTML = `<option value="">Selecciona un curso</option>${opciones}`;
+    courseSelect.value = cursoActual ? cursoActual.id : "";
   }
 
   function actualizarMarcaCurso() {
     const title = $("#brandTitle");
     const subtitle = $("#brandSubtitle");
     const logo = document.querySelector(".logo");
-    if (title) title.textContent = cursoActual.titulo;
-    if (subtitle) subtitle.textContent = cursoActual.subtitle || cursoActual.descripcion || "";
-    if (logo) logo.textContent = cursoActual.emoji || "📚";
+    if (title) title.textContent = cursoActual ? cursoActual.titulo : "Cursos";
+    if (subtitle) {
+      subtitle.textContent = cursoActual
+        ? (cursoActual.subtitle || cursoActual.descripcion || "")
+        : "Selecciona un curso para comenzar";
+    }
+    if (logo) logo.textContent = cursoActual ? (cursoActual.emoji || "📚") : "📚";
+  }
+
+  function mostrarCatalogo() {
+    cursoActual = null;
+    localStorage.removeItem(COURSE_STORAGE_KEY);
+    reconstruirEjerciciosPlanos();
+    ejercicioActual = null;
+    indiceActual = -1;
+    mediaActual = null;
+    quizRespuesta = null;
+    exercise.classList.add("hidden");
+    mediaPanel.classList.add("hidden");
+    welcome.classList.remove("hidden");
+    actualizarMarcaCurso();
+    pintarSelectorCursos();
+    renderSidebar();
+    pintarWelcome();
   }
 
   function cambiarCurso(courseId) {
+    if (!courseId) {
+      mostrarCatalogo();
+      return;
+    }
     const curso = cursos.find((c) => c.id === courseId);
     if (!curso) return;
     cursoActual = curso;
@@ -99,16 +109,13 @@
   }
 
   function mezclarCursosRemotos(remotos) {
-    if (!remotos || !remotos.length) return;
-    const localesSinFallbackDuplicado = cursos.filter((c) => {
-      if (c.id === "estadistica-aplicada-local" && remotos.some((r) => r.id === "estadistica-aplicada")) return false;
-      return !remotos.some((r) => r.id === c.id);
-    });
-    cursos = [...localesSinFallbackDuplicado, ...remotos];
-    elegirCursoInicial();
+    cursos = remotos || [];
+    cursoActual = null;
+    reconstruirEjerciciosPlanos();
     pintarSelectorCursos();
     actualizarMarcaCurso();
     renderSidebar();
+    pintarWelcome();
   }
 
   async function cargarCursosRemotos() {
@@ -120,8 +127,6 @@
       console.warn("No se pudieron cargar cursos desde Supabase:", e.message || e);
     }
   }
-
-  elegirCursoInicial();
 
   // Usuario logueado (null = invitado, progreso solo local).
   let usuarioActual = null;
@@ -229,6 +234,25 @@
   // --- Construye la barra lateral ------------------------------------------
   function renderSidebar() {
     sidebar.innerHTML = "";
+    if (!cursoActual) {
+      const header = document.createElement("div");
+      header.className = "modulo-header";
+      header.innerHTML = `<span class="emoji">📚</span> Cursos`;
+      sidebar.appendChild(header);
+      cursos.forEach((curso) => {
+        const item = document.createElement("div");
+        item.className = "ej-item course-link";
+        item.innerHTML = `
+          <span class="estado">${curso.emoji || "📚"}</span>
+          <span class="nombre">${curso.titulo}</span>
+          <span class="nivel-dots">${(curso.modulos || []).length} módulos</span>`;
+        item.addEventListener("click", () => cambiarCurso(curso.id));
+        sidebar.appendChild(item);
+      });
+      actualizarProgresoGlobal();
+      return;
+    }
+
     let globalIndex = 0;
 
     // Clase del curso en audio (podcast general). Siempre accesible: es material
@@ -311,6 +335,7 @@
   }
 
   function cursoTieneCodigo() {
+    if (!cursoActual) return false;
     return ejerciciosPlanos.some((e) => !((e.type || "code").startsWith("quiz")));
   }
 
@@ -318,6 +343,41 @@
     const h = welcome.querySelector("h2");
     const p = welcome.querySelector("p");
     const list = welcome.querySelector(".welcome-list");
+    if (!cursoActual) {
+      if (h) h.textContent = "Elige un curso";
+      if (p) {
+        p.innerHTML = cursos.length
+          ? "Estos cursos vienen desde Supabase y se pueden usar sin iniciar sesión."
+          : "Cargando cursos desde Supabase…";
+      }
+      if (list) {
+        list.innerHTML = cursos.length
+          ? cursos.map((curso) => `
+              <li class="course-card">
+                <button type="button" class="course-card-btn" data-course-id="${escaparHtml(curso.id)}">
+                  <span class="course-card-emoji">${curso.emoji || "📚"}</span>
+                  <span class="course-card-main">
+                    <span class="course-card-title">${escaparHtml(curso.titulo)}</span>
+                    <span class="course-card-sub">${escaparHtml(curso.subtitle || curso.descripcion || "")}</span>
+                  </span>
+                  <span class="course-card-count">${(curso.modulos || []).length} módulos</span>
+                </button>
+              </li>
+            `).join("")
+          : `<li>Cargando catálogo…</li>`;
+        list.querySelectorAll("[data-course-id]").forEach((btn) => {
+          btn.addEventListener("click", () => cambiarCurso(btn.getAttribute("data-course-id")));
+        });
+      }
+      if (pyStatus) {
+        pyStatus.textContent = cursos.length
+          ? "Selecciona un curso para ver módulos y ejercicios."
+          : "Conectando con Supabase…";
+        pyStatus.style.background = "var(--bg-card)";
+      }
+      return;
+    }
+
     if (h) h.textContent = `Bienvenido/a a ${cursoActual.titulo}`;
     if (p) {
       p.innerHTML = cursoActual.descripcion || "Elige un módulo de la izquierda para empezar.";
@@ -722,6 +782,13 @@
 
   // --- Carga inicial de Pyodide en segundo plano ---------------------------
   async function precargarPython() {
+    if (!cursoActual) {
+      if (pyStatus) {
+        pyStatus.innerHTML = "Selecciona un curso para empezar.";
+        pyStatus.style.background = "var(--bg-card)";
+      }
+      return;
+    }
     if (!cursoTieneCodigo()) {
       pyStatus.innerHTML = "✅ Curso listo. Elegí una pregunta para empezar.";
       pyStatus.style.background = "var(--bg-card)";
@@ -770,6 +837,9 @@
     // Expone el progreso para el modo prueba (saber qué módulos están completos).
     window.ProgresoApp = {
       completados: () => ({ ...estado.completados }),
+      cursos: () => cursos.slice(),
+      cursoActual: () => cursoActual,
+      modulosActuales: () => modulos.slice(),
     };
 
     // Expone el contexto del ejercicio actual para el asistente de IA.
@@ -779,7 +849,7 @@
       const esQuiz = (ejercicioActual.type || "code").startsWith("quiz");
       return {
         id: ejercicioActual.id,
-        curso: cursoActual.titulo,
+        curso: cursoActual ? cursoActual.titulo : "",
         titulo: ejercicioActual.titulo,
         tipo: ejercicioActual.type || "code",
         enunciado,

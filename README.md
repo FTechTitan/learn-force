@@ -1,15 +1,17 @@
 # 🐍 Python de a poco · progra-UAI
 
-Webapp para **aprender Python paso a paso**, con ejercicios de menos a más que se
-**corrigen automáticamente** dentro del navegador (sin servidor).
+Webapp para cursos configurables desde Supabase. El curso original de
+**Python de a poco** usa ejercicios de menos a más que se **corrigen
+automáticamente** dentro del navegador.
 
 El código del alumno corre con **Pyodide** (Python compilado a WebAssembly), así
 que todo funciona como sitio **100% estático** — ideal para Cloudflare Pages.
 
 ## Cómo funciona
 
-- **Módulos progresivos**: Condicionales → Ciclos → Listas. Cada ejercicio se
-  desbloquea al completar el anterior.
+- **Cursos desde Supabase**: el catálogo, módulos, ejercicios y preguntas se
+  leen desde `public.courses`, `public.course_modules` y `public.course_items`.
+- **Módulos progresivos**: cada ejercicio se desbloquea al completar el anterior.
 - **Editor de código** (CodeMirror) con resaltado de sintaxis.
 - **Ejecutar** ▶️ — corre tu código; `input()` se pide en una ventanita o desde
   el cuadro de "entrada manual".
@@ -21,9 +23,8 @@ que todo funciona como sitio **100% estático** — ideal para Cloudflare Pages.
 ```
 index.html        Estructura de la página
 css/styles.css    Estilos
-js/data.js        Currículo: módulos, ejercicios y casos de prueba
 js/runner.js      Motor Pyodide (ejecuta Python + corrige)
-js/app.js         Interfaz: sidebar, progreso, editor
+js/app.js         Interfaz: catálogo, sidebar, progreso, editor
 material/         Guías originales del curso (PDF/DOCX, fuente de los ejercicios)
 ```
 
@@ -39,21 +40,23 @@ python3 -m http.server 8000
 > Tiene que servirse por HTTP (no abrir el `index.html` con `file://`), porque
 > Pyodide descarga sus archivos por red.
 
-## Agregar más ejercicios
+## Agregar más cursos o ejercicios
 
-Editá `js/data.js`. Cada ejercicio necesita:
+Usá el panel admin o inserta datos en Supabase. Cada item de código usa esta
+estructura en `course_items`:
 
-```js
+```json
 {
   id: "cond-06",
-  titulo: "Mi ejercicio",
-  nivel: 2,                  // 1 a 5, controla los puntitos de dificultad
-  enunciado: `<p>...</p>`,   // HTML
-  pista: "...",
-  starter: "edad = int(input())\n",
-  tests: [
-    { stdin: ["15"], expect: ["menor de edad"] },
-  ],
+  "type": "code",
+  "title": "Mi ejercicio",
+  "level": 2,
+  "statement_html": "<p>...</p>",
+  "hint": "...",
+  "starter": "edad = int(input())\n",
+  "tests": [
+    { "stdin": ["15"], "expect": ["menor de edad"] }
+  ]
 }
 ```
 
