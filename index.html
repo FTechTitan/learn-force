@@ -17,11 +17,15 @@
     <div class="brand">
       <span class="logo">🐍</span>
       <div>
-        <h1>Python de a poco</h1>
-        <p class="subtitle">Aprende programando · curso UAI</p>
+        <h1 id="brandTitle">Python de a poco</h1>
+        <p class="subtitle" id="brandSubtitle">Aprende programando · curso UAI</p>
       </div>
     </div>
     <div class="topbar-right">
+      <label class="course-select-wrap" for="courseSelect">
+        <span>Curso</span>
+        <select id="courseSelect"></select>
+      </label>
       <div class="progress-global">
         <div class="bar"><div class="bar-fill" id="progresoGlobal"></div></div>
         <span id="progresoTexto">0 / 0</span>
@@ -52,6 +56,11 @@
         <p class="auth-error hidden" id="authError"></p>
         <button type="submit" class="btn btn-primary btn-block" id="authSubmit">Entrar</button>
       </form>
+      <div class="auth-divider"><span>o</span></div>
+      <button type="button" class="btn-google" id="btnGoogleLogin">
+        <span class="google-mark">G</span>
+        <span>Continuar con Google</span>
+      </button>
       <p class="auth-toggle">
         <span id="authToggleText">¿No tenés cuenta?</span>
         <a href="#" id="authToggle">Registrate</a>
@@ -101,6 +110,7 @@
 
         <div class="exercise-body">
           <div class="statement" id="exEnunciado"></div>
+          <div class="quiz-area hidden" id="quizArea"></div>
           <details class="hint">
             <summary>💡 Pista</summary>
             <p id="exPista"></p>

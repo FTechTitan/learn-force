@@ -9,13 +9,33 @@
   "use strict";
 
   const STORAGE_KEY = "progra-uai-progreso-v1";
-  const modulos = window.CURRICULUM;
+  const COURSE_STORAGE_KEY = "progra-uai-curso-activo-v1";
+  let cursos = (window.LOCAL_COURSES && window.LOCAL_COURSES.length)
+    ? window.LOCAL_COURSES.slice()
+    : [{
+        id: "python-de-a-poco",
+        titulo: "Python de a poco",
+        subtitle: "Aprende programando · curso UAI",
+        emoji: "🐍",
+        source: "local",
+        modulos: window.CURRICULUM || [],
+        media: window.COURSE_MEDIA || null,
+      }];
+  let cursoActual = cursos[0];
+  let modulos = cursoActual.modulos || [];
 
   // Lista plana de ejercicios en orden, con referencia a su módulo.
-  const ejerciciosPlanos = [];
-  modulos.forEach((m) => {
-    m.ejercicios.forEach((e) => ejerciciosPlanos.push({ ...e, moduloId: m.id, moduloTitulo: m.titulo }));
-  });
+  let ejerciciosPlanos = [];
+
+  function reconstruirEjerciciosPlanos() {
+    modulos = cursoActual.modulos || [];
+    ejerciciosPlanos = [];
+    modulos.forEach((m) => {
+      (m.ejercicios || []).forEach((e) => ejerciciosPlanos.push({ ...e, moduloId: m.id, moduloTitulo: m.titulo }));
+    });
+  }
+
+  reconstruirEjerciciosPlanos();
 
   // --- Estado persistente --------------------------------------------------
   function cargarProgreso() {
@@ -34,6 +54,74 @@
   }
 
   const estado = cargarProgreso();
+
+  function elegirCursoInicial() {
+    const guardado = localStorage.getItem(COURSE_STORAGE_KEY);
+    cursoActual = cursos.find((c) => c.id === guardado) || cursos[0];
+    reconstruirEjerciciosPlanos();
+  }
+
+  function pintarSelectorCursos() {
+    if (!courseSelect) return;
+    courseSelect.innerHTML = cursos
+      .map((c) => `<option value="${c.id}">${c.emoji || "📚"} ${c.titulo}${c.source === "remote" ? "" : " · local"}</option>`)
+      .join("");
+    courseSelect.value = cursoActual.id;
+  }
+
+  function actualizarMarcaCurso() {
+    const title = $("#brandTitle");
+    const subtitle = $("#brandSubtitle");
+    const logo = document.querySelector(".logo");
+    if (title) title.textContent = cursoActual.titulo;
+    if (subtitle) subtitle.textContent = cursoActual.subtitle || cursoActual.descripcion || "";
+    if (logo) logo.textContent = cursoActual.emoji || "📚";
+  }
+
+  function cambiarCurso(courseId) {
+    const curso = cursos.find((c) => c.id === courseId);
+    if (!curso) return;
+    cursoActual = curso;
+    localStorage.setItem(COURSE_STORAGE_KEY, cursoActual.id);
+    reconstruirEjerciciosPlanos();
+    ejercicioActual = null;
+    indiceActual = -1;
+    mediaActual = null;
+    quizRespuesta = null;
+    exercise.classList.add("hidden");
+    mediaPanel.classList.add("hidden");
+    welcome.classList.remove("hidden");
+    actualizarMarcaCurso();
+    pintarSelectorCursos();
+    renderSidebar();
+    pintarWelcome();
+    if (!pyListo) precargarPython();
+  }
+
+  function mezclarCursosRemotos(remotos) {
+    if (!remotos || !remotos.length) return;
+    const localesSinFallbackDuplicado = cursos.filter((c) => {
+      if (c.id === "estadistica-aplicada-local" && remotos.some((r) => r.id === "estadistica-aplicada")) return false;
+      return !remotos.some((r) => r.id === c.id);
+    });
+    cursos = [...localesSinFallbackDuplicado, ...remotos];
+    elegirCursoInicial();
+    pintarSelectorCursos();
+    actualizarMarcaCurso();
+    renderSidebar();
+  }
+
+  async function cargarCursosRemotos() {
+    if (!window.CursosRemotos) return;
+    try {
+      const remotos = await window.CursosRemotos.cargarPublicados();
+      mezclarCursosRemotos(remotos);
+    } catch (e) {
+      console.warn("No se pudieron cargar cursos desde Supabase:", e.message || e);
+    }
+  }
+
+  elegirCursoInicial();
 
   // Usuario logueado (null = invitado, progreso solo local).
   let usuarioActual = null;
@@ -113,11 +201,13 @@
   const outputEl = $("#output");
   const pyStatus = $("#pyStatus");
   const mediaPanel = $("#media");
+  const courseSelect = $("#courseSelect");
 
   let editor = null;       // instancia de CodeMirror
   let ejercicioActual = null;
   let indiceActual = -1;
   let mediaActual = null;  // id de la clase de media abierta ("curso" o moduloId)
+  let quizRespuesta = null;
 
   // --- Inicializa el editor CodeMirror -------------------------------------
   function initEditor() {
@@ -143,8 +233,8 @@
 
     // Clase del curso en audio (podcast general). Siempre accesible: es material
     // de estudio, no se bloquea por progreso como los ejercicios.
-    if (window.COURSE_MEDIA && window.COURSE_MEDIA.audio) {
-      const cm = window.COURSE_MEDIA;
+    if (cursoActual.media && cursoActual.media.audio) {
+      const cm = cursoActual.media;
       const cmItem = document.createElement("div");
       cmItem.className = "ej-item media-link";
       if (mediaActual === "curso") cmItem.classList.add("activo");
@@ -182,7 +272,7 @@
         divMod.appendChild(mItem);
       }
 
-      modulo.ejercicios.forEach((ej) => {
+      (modulo.ejercicios || []).forEach((ej) => {
         const idx = globalIndex++;
         const desbloqueado = estaDesbloqueado(idx);
         const completado = !!estado.completados[ej.id];
@@ -193,7 +283,7 @@
         if (ejercicioActual && ej.id === ejercicioActual.id) item.classList.add("activo");
 
         const estadoIcon = completado ? "✅" : desbloqueado ? "⚪" : "🔒";
-        const dots = "●".repeat(ej.nivel || 1);
+        const dots = (ej.type || "code").startsWith("quiz") ? "quiz" : "●".repeat(ej.nivel || 1);
 
         item.innerHTML = `
           <span class="estado">${estadoIcon}</span>
@@ -218,6 +308,41 @@
     const pct = total ? Math.round((hechos / total) * 100) : 0;
     $("#progresoGlobal").style.width = pct + "%";
     $("#progresoTexto").textContent = `${hechos} / ${total}`;
+  }
+
+  function cursoTieneCodigo() {
+    return ejerciciosPlanos.some((e) => !((e.type || "code").startsWith("quiz")));
+  }
+
+  function pintarWelcome() {
+    const h = welcome.querySelector("h2");
+    const p = welcome.querySelector("p");
+    const list = welcome.querySelector(".welcome-list");
+    if (h) h.textContent = `Bienvenido/a a ${cursoActual.titulo}`;
+    if (p) {
+      p.innerHTML = cursoActual.descripcion || "Elige un módulo de la izquierda para empezar.";
+    }
+    if (list) {
+      if (cursoTieneCodigo()) {
+        list.innerHTML = `
+          <li>📝 Lee el enunciado y escribe tu solución en el editor.</li>
+          <li>▶️ Toca <b>Ejecutar</b> para probar tu código.</li>
+          <li>✅ Toca <b>Comprobar</b> para validar tu respuesta.</li>
+          <li>🔓 Al completar ejercicios se desbloquean los siguientes.</li>`;
+      } else {
+        list.innerHTML = `
+          <li>✅ Responde verdadero/falso o alternativas.</li>
+          <li>📌 Revisa la explicación inmediata después de comprobar.</li>
+          <li>🔓 Al responder correctamente se desbloquea la siguiente pregunta.</li>
+          <li>📈 Usa el progreso para repetir solo donde fallaste.</li>`;
+      }
+    }
+    if (pyStatus) {
+      pyStatus.textContent = cursoTieneCodigo()
+        ? "Cargando Python en el navegador…"
+        : "Curso listo. Elige la primera pregunta para empezar.";
+      pyStatus.style.background = cursoTieneCodigo() ? "var(--green-soft)" : "var(--bg-card)";
+    }
   }
 
   // --- Clases en audio/video -----------------------------------------------
@@ -261,7 +386,7 @@
   }
 
   // Muestra el panel de media y oculta welcome/ejercicio.
-  function mostrarPanelMedia(badge, titulo, subHtml, items, teoriaHtml, claveActiva) {
+  function mostrarPanelMedia(badge, titulo, subHtml, items, teoriaHtml, claveActiva, presUrl) {
     ejercicioActual = null;
     indiceActual = -1;
     mediaActual = claveActiva;
@@ -273,6 +398,12 @@
     $("#mediaBadge").textContent = badge;
     $("#mediaTitulo").textContent = titulo;
     $("#mediaSub").innerHTML = subHtml || "";
+    if (presUrl) {
+      $("#mediaSub").insertAdjacentHTML(
+        "beforeend",
+        ` <a class="media-pres-link" href="${presUrl}" target="_blank" rel="noopener">📊 Ver presentación</a>`
+      );
+    }
     $("#mediaTeoria").innerHTML = teoriaHtml || "";
     pintarReproductores($("#mediaPlayers"), items);
 
@@ -281,7 +412,7 @@
   }
 
   function abrirMediaCurso() {
-    const cm = window.COURSE_MEDIA;
+    const cm = cursoActual.media;
     if (!cm) return;
     const items = [];
     if (cm.audio) items.push({ kind: "audio", src: cm.audio, label: "Podcast del curso" });
@@ -301,7 +432,8 @@
       modulo.intro,
       items,
       modulo.teoria,
-      modulo.id
+      modulo.id,
+      modulo.media.presentacion
     );
   }
 
@@ -323,22 +455,57 @@
     $("#exTitulo").textContent = ej.titulo;
     $("#exEnunciado").innerHTML = ej.enunciado;
     $("#exPista").textContent = ej.pista || "Pensá el problema paso a paso.";
+    quizRespuesta = null;
 
-    // Restaura el código guardado del alumno o el starter del ejercicio.
-    const guardado = estado.codigo[ej.id];
-    editor.setValue(guardado != null ? guardado : ej.starter || "");
-    // Recalcula el ancho del gutter (números de línea) para que no tape el código.
-    setTimeout(() => editor.refresh(), 0);
+    const esQuiz = (ej.type || "code").startsWith("quiz");
+    $("#quizArea").classList.toggle("hidden", !esQuiz);
+    document.querySelector(".editor-zone").classList.toggle("hidden", esQuiz);
+    document.querySelector(".output-zone").querySelector("h3").textContent = esQuiz ? "Corrección" : "Resultado";
+
+    if (esQuiz) {
+      pintarQuiz(ej);
+    } else {
+      // Restaura el código guardado del alumno o el starter del ejercicio.
+      const guardado = estado.codigo[ej.id];
+      editor.setValue(guardado != null ? guardado : ej.starter || "");
+      // Recalcula el ancho del gutter (números de línea) para que no tape el código.
+      setTimeout(() => editor.refresh(), 0);
+    }
 
     $("#stdin").value = "";
     outputEl.className = "output";
-    outputEl.textContent = "Tocá «Ejecutar» o «Comprobar» para ver la salida.";
+    outputEl.textContent = esQuiz
+      ? "Elige una respuesta y toca «Comprobar»."
+      : "Tocá «Ejecutar» o «Comprobar» para ver la salida.";
 
     // El botón Siguiente se habilita solo si ya está completado.
     $("#btnNext").disabled = !estado.completados[ej.id];
 
     renderSidebar();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function pintarQuiz(ej) {
+    const area = $("#quizArea");
+    const opciones = (ej.options && ej.options.length)
+      ? ej.options
+      : [{ id: "true", label: "Verdadero" }, { id: "false", label: "Falso" }];
+    area.innerHTML = `
+      <div class="quiz-options">
+        ${opciones.map((op) => `
+          <button type="button" class="quiz-option" data-answer="${escaparHtml(op.id)}">
+            <span class="quiz-option-key">${escaparHtml(op.id)}</span>
+            <span>${escaparHtml(op.label)}</span>
+          </button>
+        `).join("")}
+      </div>`;
+    area.querySelectorAll(".quiz-option").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        quizRespuesta = btn.getAttribute("data-answer");
+        area.querySelectorAll(".quiz-option").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+      });
+    });
   }
 
   // --- Guarda el código del alumno mientras escribe ------------------------
@@ -368,6 +535,10 @@
 
   // --- Botón Ejecutar ------------------------------------------------------
   async function onRun() {
+    if (ejercicioActual && (ejercicioActual.type || "code").startsWith("quiz")) {
+      setOutput("En este tipo de ejercicio no hay código que ejecutar. Elige una alternativa y toca «Comprobar».", "");
+      return;
+    }
     guardarCodigoActual();
     await asegurarPython();
     const codigo = editor.getValue();
@@ -391,6 +562,10 @@
 
   // --- Botón Comprobar -----------------------------------------------------
   async function onCheck() {
+    if (ejercicioActual && (ejercicioActual.type || "code").startsWith("quiz")) {
+      comprobarQuiz();
+      return;
+    }
     guardarCodigoActual();
     await asegurarPython();
     const codigo = editor.getValue();
@@ -434,12 +609,36 @@
     }
   }
 
+  function comprobarQuiz() {
+    const ej = ejercicioActual;
+    if (!quizRespuesta) {
+      setOutput('<span class="fail-line">Elige una respuesta antes de comprobar.</span>', "fail");
+      return;
+    }
+    const correcta = String(ej.correctAnswer) === String(quizRespuesta);
+    const explicacion = ej.explanation || ej.solutionHtml || "";
+    if (correcta) {
+      setOutput(
+        `<span class="ok-line">✅ Correcto.</span>\n${escaparHtml(explicacion)}`,
+        "ok"
+      );
+      marcarCompletado(ej);
+      return;
+    }
+    setOutput(
+      `<span class="fail-line">❌ No todavía.</span>\n${escaparHtml(explicacion || "Revisa la pista y vuelve a intentarlo.")}`,
+      "fail"
+    );
+  }
+
   // --- Marca completado y desbloquea el siguiente --------------------------
   function marcarCompletado(ej) {
     const eraNuevo = !estado.completados[ej.id];
     estado.completados[ej.id] = true;
     guardarProgreso();
-    pushRemoto(ej.id, { completed: true, code: editor.getValue() });
+    const payload = { completed: true };
+    if (!(ej.type || "code").startsWith("quiz")) payload.code = editor.getValue();
+    pushRemoto(ej.id, payload);
     renderSidebar();
     $("#btnNext").disabled = indiceActual >= ejerciciosPlanos.length - 1;
 
@@ -523,6 +722,11 @@
 
   // --- Carga inicial de Pyodide en segundo plano ---------------------------
   async function precargarPython() {
+    if (!cursoTieneCodigo()) {
+      pyStatus.innerHTML = "✅ Curso listo. Elegí una pregunta para empezar.";
+      pyStatus.style.background = "var(--bg-card)";
+      return;
+    }
     try {
       await window.PyRunner.load();
       pyListo = true;
@@ -537,7 +741,15 @@
   // --- Arranque ------------------------------------------------------------
   function init() {
     initEditor();
+    actualizarMarcaCurso();
+    pintarSelectorCursos();
+    pintarWelcome();
     renderSidebar();
+    cargarCursosRemotos();
+
+    if (courseSelect) {
+      courseSelect.addEventListener("change", () => cambiarCurso(courseSelect.value));
+    }
 
     editor.on("change", () => {
       // Guardado liviano del código mientras escribe (local + nube con debounce).
@@ -564,13 +776,24 @@
     window.AsistenteContexto = () => {
       if (!ejercicioActual) return {};
       const enunciado = (ejercicioActual.enunciado || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      return { id: ejercicioActual.id, titulo: ejercicioActual.titulo, enunciado, codigo: editor.getValue() };
+      const esQuiz = (ejercicioActual.type || "code").startsWith("quiz");
+      return {
+        id: ejercicioActual.id,
+        curso: cursoActual.titulo,
+        titulo: ejercicioActual.titulo,
+        tipo: ejercicioActual.type || "code",
+        enunciado,
+        codigo: esQuiz ? "" : editor.getValue(),
+      };
     };
 
     // Permite que el tutor por voz (ConvAI) escriba código en el editor.
     // Devuelve un mensaje de estado que el agente puede leer en voz.
     window.EscribirEnEditor = (codigo) => {
       if (!codigo || !String(codigo).trim()) return "No recibí código para escribir.";
+      if (ejercicioActual && (ejercicioActual.type || "code").startsWith("quiz")) {
+        return "Este ejercicio es de alternativas o verdadero/falso, no tiene editor de código.";
+      }
       if (!editor || exercise.classList.contains("hidden")) {
         return "El alumno no tiene ningún ejercicio abierto. Pedile que abra un ejercicio primero.";
       }

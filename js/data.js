@@ -26,7 +26,7 @@ const CURRICULUM = [
     id: "condicionales",
     titulo: "Condicionales",
     emoji: "🔀",
-    media: { video: MEDIA_BASE + "/condicionales.mp4" },
+    media: { video: MEDIA_BASE + "/condicionales.mp4", presentacion: "presentaciones/condicionales.html" },
     intro:
       "Los condicionales le dan <b>inteligencia</b> al programa: permiten decidir " +
       "qué instrucciones ejecutar según una condición lógica (<code>if</code>, " +
@@ -163,7 +163,7 @@ Fahrenheit, conviértelo a Celsius con la fórmula:</p>
     id: "ciclos",
     titulo: "Ciclos",
     emoji: "🔁",
-    media: { video: MEDIA_BASE + "/ciclos.mp4" },
+    media: { video: MEDIA_BASE + "/ciclos.mp4", presentacion: "presentaciones/ciclos.html" },
     intro:
       "Un ciclo permite <b>repetir</b> instrucciones. Python tiene dos: " +
       "<code>while</code> (repite mientras se cumpla una condición) y " +
@@ -314,7 +314,7 @@ derecho y al revés, ej: 131, 7887). Muestra <code>Es palindromo</code> o
     id: "listas",
     titulo: "Listas",
     emoji: "📋",
-    media: { video: MEDIA_BASE + "/listas.mp4" },
+    media: { video: MEDIA_BASE + "/listas.mp4", presentacion: "presentaciones/listas.html" },
     intro:
       "Una <b>lista</b> agrupa muchos valores en una sola variable. Se accede a " +
       "cada elemento por su <b>índice</b> (empezando en 0).",
@@ -748,6 +748,92 @@ const COURSE_MEDIA = {
   audio: MEDIA_BASE + "/curso-podcast.mp3",
 };
 
+const LOCAL_STATS_CURRICULUM = [
+  {
+    id: "estadistica-vf-local",
+    titulo: "Verdadero o falso",
+    emoji: "✅",
+    intro: "Preguntas cortas para detectar errores conceptuales frecuentes.",
+    teoria: "<p>Usa independencia solo cuando se cumpla <code>P(A∩B)=P(A)P(B)</code> o <code>P(A|B)=P(A)</code>.</p>",
+    ejercicios: [
+      {
+        id: "local-est-vf-01",
+        type: "quiz_boolean",
+        titulo: "Excluyentes e independientes",
+        nivel: 1,
+        enunciado: "<p>Si dos sucesos A y B son mutuamente excluyentes y ambos tienen probabilidad positiva, entonces A y B son independientes.</p>",
+        pista: "Compara P(A∩B) contra P(A)P(B).",
+        options: [{ id: "true", label: "Verdadero" }, { id: "false", label: "Falso" }],
+        correctAnswer: "false",
+        explanation: "Falso. Si son excluyentes, P(A∩B)=0; pero si ambos tienen probabilidad positiva, P(A)P(B)>0.",
+      },
+      {
+        id: "local-est-vf-02",
+        type: "quiz_boolean",
+        titulo: "Regla de unión",
+        nivel: 1,
+        enunciado: "<p>Si A y B son mutuamente excluyentes, entonces <code>P(A∪B)=P(A)+P(B)</code>.</p>",
+        pista: "Parte desde la regla general de unión.",
+        options: [{ id: "true", label: "Verdadero" }, { id: "false", label: "Falso" }],
+        correctAnswer: "true",
+        explanation: "Verdadero. La intersección vale 0, por eso no se resta nada.",
+      },
+    ],
+  },
+  {
+    id: "estadistica-alt-local",
+    titulo: "Alternativas",
+    emoji: "📝",
+    intro: "Ejercicios rápidos con una respuesta correcta.",
+    teoria: "<p>Antes de calcular, decide si importa el orden: permutaciones si importa, combinaciones si no importa.</p>",
+    ejercicios: [
+      {
+        id: "local-est-alt-01",
+        type: "quiz_single",
+        titulo: "Códigos de producto",
+        nivel: 2,
+        enunciado: "<p>Una empresa codifica productos con 2 letras distintas tomadas de A,B,C,D,E y luego 2 dígitos que pueden repetirse. ¿Cuántos códigos hay?</p>",
+        pista: "Multiplica las opciones de cada posición.",
+        options: [{ id: "a", label: "250" }, { id: "b", label: "500" }, { id: "c", label: "2000" }, { id: "d", label: "2500" }],
+        correctAnswer: "c",
+        explanation: "5 opciones para la primera letra, 4 para la segunda, 10 y 10 para los dígitos: 5·4·10·10=2000.",
+      },
+      {
+        id: "local-est-alt-02",
+        type: "quiz_single",
+        titulo: "Probabilidad total",
+        nivel: 3,
+        enunciado: "<p>Una máquina M1 produce el 70% y M2 el 30%. Defectos: 2% en M1 y 5% en M2. ¿Cuál es <code>P(defectuosa)</code>?</p>",
+        pista: "Pondera cada tasa de defecto por la proporción de producción.",
+        options: [{ id: "a", label: "0,029" }, { id: "b", label: "0,035" }, { id: "c", label: "0,070" }, { id: "d", label: "0,050" }],
+        correctAnswer: "a",
+        explanation: "P(D)=0,70·0,02 + 0,30·0,05 = 0,014+0,015=0,029.",
+      },
+    ],
+  },
+];
+
 // Expuesto globalmente para los otros scripts (sin módulos ES, todo via <script>)
 window.CURRICULUM = CURRICULUM;
 window.COURSE_MEDIA = COURSE_MEDIA;
+window.LOCAL_COURSES = [
+  {
+    id: "python-de-a-poco",
+    titulo: "Python de a poco",
+    subtitle: "Aprende programando · curso UAI",
+    descripcion: "Ejercicios de programación Python corregidos automáticamente.",
+    emoji: "🐍",
+    source: "local",
+    modulos: CURRICULUM,
+    media: COURSE_MEDIA,
+  },
+  {
+    id: "estadistica-aplicada-local",
+    titulo: "Estadística Aplicada",
+    subtitle: "Probabilidad · fallback local",
+    descripcion: "Preguntas de verdadero/falso y alternativas para estudiar probabilidad.",
+    emoji: "📊",
+    source: "local",
+    modulos: LOCAL_STATS_CURRICULUM,
+  },
+];

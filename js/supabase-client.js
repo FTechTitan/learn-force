@@ -38,6 +38,17 @@ const Auth = {
     return data.user;
   },
 
+  async entrarConGoogle() {
+    const { data, error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + window.location.pathname,
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async salir() {
     await sb.auth.signOut();
   },
@@ -85,5 +96,92 @@ const ProgresoRemoto = {
   },
 };
 
+// ---------------------------------------------------------------------------
+//  Cursos remotos configurables desde Supabase
+// ---------------------------------------------------------------------------
+function normalizarCurso(row) {
+  const modules = (row.course_modules || [])
+    .slice()
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    .map((m) => ({
+      id: m.id,
+      titulo: m.title,
+      emoji: m.emoji || "📦",
+      intro: m.intro || "",
+      teoria: m.theory || "",
+      ejercicios: (m.course_items || [])
+        .slice()
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        .map((it) => ({
+          id: it.id,
+          type: it.type,
+          titulo: it.title,
+          nivel: it.level || 1,
+          enunciado: it.statement_html,
+          pista: it.hint || "",
+          starter: it.starter || "",
+          tests: it.tests || [],
+          options: it.options || [],
+          correctAnswer: it.correct_answer,
+          explanation: it.explanation || "",
+          solutionHtml: it.solution_html || "",
+        })),
+    }));
+
+  return {
+    id: row.id,
+    titulo: row.title,
+    subtitle: row.subtitle || "",
+    descripcion: row.description || "",
+    emoji: row.emoji || "📚",
+    source: "remote",
+    modulos: modules,
+  };
+}
+
+const CursosRemotos = {
+  async cargarPublicados() {
+    const { data, error } = await sb
+      .from("courses")
+      .select(`
+        id,
+        title,
+        subtitle,
+        description,
+        emoji,
+        sort_order,
+        course_modules (
+          id,
+          title,
+          emoji,
+          intro,
+          theory,
+          sort_order,
+          course_items!course_items_module_course_fk (
+            id,
+            type,
+            title,
+            level,
+            statement_html,
+            hint,
+            starter,
+            tests,
+            options,
+            correct_answer,
+            explanation,
+            solution_html,
+            sort_order
+          )
+        )
+      `)
+      .order("sort_order", { ascending: true })
+      .order("sort_order", { referencedTable: "course_modules", ascending: true })
+      .order("sort_order", { referencedTable: "course_modules.course_items", ascending: true });
+    if (error) throw error;
+    return (data || []).map(normalizarCurso);
+  },
+};
+
 window.Auth = Auth;
 window.ProgresoRemoto = ProgresoRemoto;
+window.CursosRemotos = CursosRemotos;

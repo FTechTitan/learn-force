@@ -156,6 +156,108 @@ Deno.serve(async (req: Request) => {
     }
 
     // ----------------------------------------------------------------------
+    if (action === "course_catalog") {
+      const { data, error } = await admin
+        .from("courses")
+        .select(`
+          *,
+          course_modules (
+            *,
+            course_items (*)
+          )
+        `)
+        .order("sort_order", { ascending: true })
+        .order("sort_order", { referencedTable: "course_modules", ascending: true })
+        .order("sort_order", { referencedTable: "course_modules.course_items", ascending: true });
+      if (error) throw error;
+      return json({ courses: data || [] }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    if (action === "save_course") {
+      const course = body.course as Record<string, unknown>;
+      if (!course?.id || !course?.title) return json({ error: "Faltan id/title del curso" }, 400, headers);
+      const payload = {
+        id: String(course.id),
+        title: String(course.title),
+        subtitle: course.subtitle ? String(course.subtitle) : null,
+        description: course.description ? String(course.description) : null,
+        emoji: course.emoji ? String(course.emoji) : "📚",
+        sort_order: Number(course.sort_order || 0),
+        is_published: Boolean(course.is_published),
+        created_by: caller.id,
+      };
+      const { error } = await admin.from("courses").upsert(payload, { onConflict: "id" });
+      if (error) throw error;
+      return json({ ok: true }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    if (action === "save_module") {
+      const module = body.module as Record<string, unknown>;
+      if (!module?.id || !module?.course_id || !module?.title) {
+        return json({ error: "Faltan id/course_id/title del módulo" }, 400, headers);
+      }
+      const payload = {
+        id: String(module.id),
+        course_id: String(module.course_id),
+        title: String(module.title),
+        emoji: module.emoji ? String(module.emoji) : "📦",
+        intro: module.intro ? String(module.intro) : null,
+        theory: module.theory ? String(module.theory) : null,
+        sort_order: Number(module.sort_order || 0),
+        is_published: module.is_published !== false,
+      };
+      const { error } = await admin.from("course_modules").upsert(payload, { onConflict: "id" });
+      if (error) throw error;
+      return json({ ok: true }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    if (action === "save_item") {
+      const item = body.item as Record<string, unknown>;
+      if (!item?.id || !item?.course_id || !item?.module_id || !item?.title || !item?.statement_html) {
+        return json({ error: "Faltan campos obligatorios de la pregunta" }, 400, headers);
+      }
+      const payload = {
+        id: String(item.id),
+        course_id: String(item.course_id),
+        module_id: String(item.module_id),
+        type: String(item.type || "quiz_single"),
+        title: String(item.title),
+        level: Number(item.level || 1),
+        statement_html: String(item.statement_html),
+        hint: item.hint ? String(item.hint) : null,
+        starter: item.starter ? String(item.starter) : null,
+        tests: item.tests || [],
+        options: item.options || [],
+        correct_answer: item.correct_answer ? String(item.correct_answer) : null,
+        explanation: item.explanation ? String(item.explanation) : null,
+        solution_html: item.solution_html ? String(item.solution_html) : null,
+        sort_order: Number(item.sort_order || 0),
+        is_published: item.is_published !== false,
+      };
+      const { error } = await admin.from("course_items").upsert(payload, { onConflict: "id" });
+      if (error) throw error;
+      return json({ ok: true }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    if (action === "delete_course_entity") {
+      const table = String(body.table || "");
+      const id = String(body.id || "");
+      const allowed: Record<string, string> = {
+        courses: "courses",
+        modules: "course_modules",
+        items: "course_items",
+      };
+      if (!allowed[table] || !id) return json({ error: "Tabla o id inválido" }, 400, headers);
+      const { error } = await admin.from(allowed[table]).delete().eq("id", id);
+      if (error) throw error;
+      return json({ ok: true }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
     if (action === "user_detail") {
       const userId = body.user_id as string;
       if (!userId) return json({ error: "Falta user_id" }, 400, headers);

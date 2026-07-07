@@ -19,6 +19,7 @@
   const passIn = $("#authPassword");
   const errorEl = $("#authError");
   const submitBtn = $("#authSubmit");
+  const googleBtn = $("#btnGoogleLogin");
   const titulo = $("#authTitulo");
   const toggle = $("#authToggle");
   const toggleText = $("#authToggleText");
@@ -102,6 +103,20 @@
     $("#btnLogout").addEventListener("click", async () => {
       await window.Auth.salir();
       // onCambio dispara notificar(null)
+    });
+
+    googleBtn.addEventListener("click", async () => {
+      errorEl.classList.add("hidden");
+      googleBtn.disabled = true;
+      const textoPrevio = googleBtn.querySelector("span:last-child").textContent;
+      googleBtn.querySelector("span:last-child").textContent = "Redirigiendo…";
+      try {
+        await window.Auth.entrarConGoogle();
+      } catch (err) {
+        mostrarError(traducirError(err));
+        googleBtn.disabled = false;
+        googleBtn.querySelector("span:last-child").textContent = textoPrevio;
+      }
     });
 
     form.addEventListener("submit", async (e) => {

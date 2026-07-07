@@ -2,14 +2,14 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:1280px;height:720px;overflow:hidden;background:#0f1117;
   font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e6e9f0}
-.slide{position:relative;width:1280px;height:720px;padding:64px 72px;display:flex;flex-direction:column}
+.slide{position:relative;width:1280px;height:720px;padding:52px 72px;display:flex;flex-direction:column}
 .bar{position:absolute;left:0;top:0;width:10px;height:100%;background:var(--ac)}
 .kicker{font-size:20px;color:var(--ac);font-weight:700;letter-spacing:.3px}
-.head h2{font-size:46px;margin:10px 0 6px;letter-spacing:-.5px}
-.sub{font-size:24px;color:#9aa3b6;line-height:1.4;max-width:1050px}
-.code{margin-top:26px;background:#161a23;border:1px solid #2a3040;border-left:4px solid var(--ac);
-  border-radius:12px;padding:26px 30px;font-family:'JetBrains Mono','Fira Code',Consolas,monospace;
-  font-size:27px;line-height:1.5;overflow:hidden}
+.head h2{font-size:44px;margin:8px 0 6px;letter-spacing:-.5px}
+.sub{font-size:23px;color:#9aa3b6;line-height:1.35;max-width:1050px}
+.code{margin-top:20px;background:#161a23;border:1px solid #2a3040;border-left:4px solid var(--ac);
+  border-radius:12px;padding:22px 28px;font-family:'JetBrains Mono','Fira Code',Consolas,monospace;
+  line-height:1.45;overflow:hidden}
 .code code{white-space:pre}
 .bullets{margin-top:30px;list-style:none}
 .bullets li{font-size:30px;line-height:1.5;margin-bottom:18px;padding-left:42px;position:relative}
@@ -25,37 +25,37 @@ html,body{width:1280px;height:720px;overflow:hidden;background:#0f1117;
 .hljs-number{color:#d19a66}.hljs-comment{color:#7f8aa0;font-style:italic}
 .hljs-title{color:#61afef}.hljs-params{color:#e6e9f0}
 
-body{display:flex;align-items:center;justify-content:center;min-height:100vh}.slide{box-shadow:0 20px 60px rgba(0,0,0,.6)}</style></head><body style="--ac:#5fa8e0"><section class="slide"><div class="cover"><div class="emoji">🔀</div><h1>Condicionales en Python</h1><p class="cover-sub">Análisis técnico · Guía 02 — if · elif · else · operadores</p></div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Hoja de ruta</h2></div><ul class="bullets"><li>1 · Lógica condicional: darle inteligencia al código</li><li>2 · Sintaxis y errores típicos (indentación, ==)</li><li>3 · Secuencial vs anidado</li><li>4 · Ejercicio: sensor de temperatura (°F → °C)</li><li>5 · Ejercicio: empaquetado (// y %)</li></ul><div class="pager">2 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>1 · Lógica condicional</h2><p class="sub">Si las variables dan memoria, los condicionales dan inteligencia.</p></div><pre class="code"><code class="language-python">if hace_sol:
+body{display:flex;align-items:center;justify-content:center;min-height:100vh}.slide{box-shadow:0 20px 60px rgba(0,0,0,.6)}</style></head><body style="--ac:#5fa8e0"><section class="slide"><div class="cover"><div class="emoji">🔀</div><h1>Condicionales en Python</h1><p class="cover-sub">Análisis técnico · Guía 02 — if · elif · else · operadores</p></div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Hoja de ruta</h2></div><ul class="bullets"><li>1 · Lógica condicional: darle inteligencia al código</li><li>2 · Sintaxis y errores típicos (indentación, ==)</li><li>3 · Secuencial vs anidado</li><li>4 · Ejercicio: sensor de temperatura (°F → °C)</li><li>5 · Ejercicio: empaquetado (// y %)</li></ul><div class="pager">2 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>1 · Lógica condicional</h2><p class="sub">Si las variables dan memoria, los condicionales dan inteligencia.</p></div><pre class="code" style="font-size:28px"><code class="language-python">if hace_sol:
     print("Ropa ligera")
 else:
-    print("Llevar abrigo")</code></pre><div class="pager">3 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>if · elif · else</h2><p class="sub">Encadená varias decisiones sin romper el flujo:</p></div><pre class="code"><code class="language-python">if nota &gt;= 4.0:
+    print("Llevar abrigo")</code></pre><div class="pager">3 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>if · elif · else</h2><p class="sub">Encadená varias decisiones sin romper el flujo:</p></div><pre class="code" style="font-size:28px"><code class="language-python">if nota &gt;= 4.0:
     print("Aprobado")
 elif nota &gt;= 3.0:
     print("En riesgo")
 else:
-    print("Reprobado")</code></pre><div class="pager">4 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Operadores</h2><p class="sub">Relacionales: ==  !=  &lt;  &gt;  &lt;=  &gt;=   ·   Lógicos: and  or  not</p></div><pre class="code"><code class="language-python">x == 5      # ✔ compara (igualdad)
+    print("Reprobado")</code></pre><div class="pager">4 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Operadores</h2><p class="sub">Relacionales: ==  !=  &lt;  &gt;  &lt;=  &gt;=   ·   Lógicos: and  or  not</p></div><pre class="code" style="font-size:28px"><code class="language-python">x == 5      # ✔ compara (igualdad)
 x = 5       # ✗ asigna  → error típico
 
 if edad &gt;= 18 and tiene_carnet:
-    print("Puede conducir")</code></pre><div class="pager">5 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>2 · Sintaxis: indentación</h2><p class="sub">Python usa el sangrado (no llaves) para marcar el bloque:</p></div><pre class="code"><code class="language-python">if temperatura &gt; 30:
+    print("Puede conducir")</code></pre><div class="pager">5 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>2 · Sintaxis: indentación</h2><p class="sub">Python usa el sangrado (no llaves) para marcar el bloque:</p></div><pre class="code" style="font-size:28px"><code class="language-python">if temperatura &gt; 30:
     print("Hace calor")   # ← dentro del if
     print("Tomá agua")
-print("Fin")              # ← siempre se ejecuta</code></pre><div class="pager">6 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Trampa: el else</h2><p class="sub">El else NUNCA lleva condición al lado:</p></div><pre class="code"><code class="language-python">if x &gt; 0:
+print("Fin")              # ← siempre se ejecuta</code></pre><div class="pager">6 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Trampa: el else</h2><p class="sub">El else NUNCA lleva condición al lado:</p></div><pre class="code" style="font-size:28px"><code class="language-python">if x &gt; 0:
     print("Positivo")
 else:                 # ✔ sin condición
     print("No positivo")
 
-# else x &lt; 0:   ← SyntaxError</code></pre><div class="pager">7 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>3 · Secuencial vs anidado</h2><p class="sub">Una sola pregunta, dos caminos excluyentes (operador módulo %):</p></div><pre class="code"><code class="language-python">n = int(input("Número: "))
+# else x &lt; 0:   ← SyntaxError</code></pre><div class="pager">7 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>3 · Secuencial vs anidado</h2><p class="sub">Una sola pregunta, dos caminos excluyentes (operador módulo %):</p></div><pre class="code" style="font-size:28px"><code class="language-python">n = int(input("Número: "))
 if n % 3 == 0:
     print("Múltiplo de 3")
 else:
-    print("No es múltiplo")</code></pre><div class="pager">8 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Condicionales anidados</h2><p class="sub">Una decisión depende de otra previa (if dentro de if):</p></div><pre class="code"><code class="language-python">if plato == "carne":
+    print("No es múltiplo")</code></pre><div class="pager">8 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Condicionales anidados</h2><p class="sub">Una decisión depende de otra previa (if dentro de if):</p></div><pre class="code" style="font-size:25px"><code class="language-python">if plato == "carne":
     if corte == "vacuno":
         print("Bife")
     else:
         print("Pollo")
 else:
-    print("Pescado")</code></pre><div class="pager">9 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>4 · Sensor IoT (°F → °C)</h2><p class="sub">Capturar → convertir → clasificar con if/elif/else:</p></div><pre class="code"><code class="language-python">f = float(input("Temp °F: "))
+    print("Pescado")</code></pre><div class="pager">9 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>4 · Sensor IoT (°F → °C)</h2><p class="sub">Capturar → convertir → clasificar con if/elif/else:</p></div><pre class="code" style="font-size:22px"><code class="language-python">f = float(input("Temp °F: "))
 c = (f - 32) / 1.8
 print("Celsius:", c)
 
@@ -64,7 +64,7 @@ if c &lt; 15:
 elif c &lt;= 25:
     print("Temperatura agradable")
 else:
-    print("Hace calor")</code></pre><div class="pager">10 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>5 · Empaquetado (// y %)</h2><p class="sub">División entera y resto deciden si hace falta una caja extra:</p></div><pre class="code"><code class="language-python">cubos = 80
+    print("Hace calor")</code></pre><div class="pager">10 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>5 · Empaquetado (// y %)</h2><p class="sub">División entera y resto deciden si hace falta una caja extra:</p></div><pre class="code" style="font-size:22px"><code class="language-python">cubos = 80
 por_caja = 16
 llenas = cubos // por_caja   # división entera → 5
 sobran = cubos % por_caja    # resto → 0
@@ -72,7 +72,7 @@ sobran = cubos % por_caja    # resto → 0
 if sobran != 0:
     print(llenas + 1, "cajas (una parcial)")
 else:
-    print(llenas, "cajas exactas")</code></pre><div class="pager">11 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Desafío: proyectil</h2><p class="sub">Usar math y una evaluación lógica impecable:</p></div><pre class="code"><code class="language-python">import math
+    print(llenas, "cajas exactas")</code></pre><div class="pager">11 / 12</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔀 Condicionales en Python · Guía 02</span><h2>Desafío: proyectil</h2><p class="sub">Usar math y una evaluación lógica impecable:</p></div><pre class="code" style="font-size:25px"><code class="language-python">import math
 y = v0 * math.sin(ang) * t - 0.5 * 9.8 * t**2
 
 if y &lt;= 0:

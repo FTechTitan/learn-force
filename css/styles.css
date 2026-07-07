@@ -63,6 +63,19 @@ body {
 
 .topbar-right { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 
+.course-select-wrap {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-dim); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.course-select-wrap select {
+  min-width: 220px; max-width: 320px;
+  background: var(--bg-card); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 10px; font: 600 14px var(--font);
+}
+.course-select-wrap select:focus { outline: none; border-color: var(--py-blue); }
+
 /* ---------- Auth area (topbar) ---------- */
 .auth-area { display: flex; align-items: center; }
 .btn-sm { padding: 6px 14px; font-size: 13px; }
@@ -105,6 +118,28 @@ body {
 .auth-error {
   color: var(--red); font-size: 13px; margin: 0 0 10px;
   background: var(--red-soft); padding: 8px 12px; border-radius: 8px;
+}
+.auth-divider {
+  display: flex; align-items: center; gap: 10px; margin: 14px 0;
+  color: var(--text-dim); font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: ""; height: 1px; flex: 1; background: var(--border);
+}
+.btn-google {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #fff; color: #1f2328; border: 1px solid #d0d7de;
+  border-radius: 8px; padding: 10px 12px;
+  font: 700 14px var(--font); cursor: pointer;
+}
+.btn-google:hover:not(:disabled) { filter: brightness(.96); }
+.btn-google:disabled { opacity: .65; cursor: wait; }
+.google-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  color: #4285f4; background: #fff;
+  font: 800 16px Arial, sans-serif;
 }
 .auth-toggle, .auth-skip { text-align: center; font-size: 13px; color: var(--text-dim); margin: 14px 0 0; }
 .auth-skip { margin-top: 8px; }
@@ -197,6 +232,31 @@ body {
   user-select: none; padding: 6px 0;
 }
 .hint p { margin: 6px 0 0; color: var(--text-dim); font-size: 14px; }
+
+/* ---------- Quizzes ---------- */
+.quiz-area {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px; margin: 12px 0 18px;
+}
+.quiz-options { display: grid; gap: 10px; }
+.quiz-option {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  text-align: left; color: var(--text); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; cursor: pointer; font: 600 14px var(--font);
+}
+.quiz-option:hover { border-color: var(--py-blue); }
+.quiz-option.selected {
+  border-color: var(--py-yellow);
+  box-shadow: 0 0 0 1px rgba(255, 212, 59, .25);
+}
+.quiz-option-key {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #0c0e14; color: var(--py-yellow);
+  font-family: var(--mono); font-size: 12px; text-transform: uppercase;
+  flex: 0 0 auto;
+}
 
 /* ---------- Editor ---------- */
 .editor-zone {
@@ -485,6 +545,14 @@ body {
   margin: 0; padding: 12px; background: #0c0e14; font-family: var(--mono);
   font-size: 12.5px; color: var(--py-blue-light); overflow-x: auto;
 }
+.admin-json {
+  width: 100%; min-height: 170px; resize: vertical;
+  background: #0c0e14; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px; margin: 8px 0 12px;
+  font: 13px/1.5 var(--mono);
+}
+.admin-json:focus { outline: none; border-color: var(--py-blue); }
 
 /* ---------- Asistente de IA ---------- */
 .ai-fab {
@@ -636,3 +704,11 @@ audio.media-el { height: 44px; background: var(--bg-soft); }
   color: var(--text-dim); text-transform: uppercase;
   font-size: 9px; letter-spacing: .5px;
 }
+
+.media-pres-link {
+  display: inline-block; margin-left: 8px; padding: 4px 12px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+  color: var(--py-yellow); border: 1px solid #3a3520;
+  border-radius: 99px; background: var(--bg-card); white-space: nowrap;
+}
+.media-pres-link:hover { border-color: var(--py-yellow); }

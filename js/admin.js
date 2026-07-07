@@ -126,6 +126,7 @@
           <h2>🛠 Panel de superadmin</h2>
           <div>
             <button class="btn-row" id="adminRefresh">↻ Actualizar</button>
+            <button class="btn-row" id="adminCourses">Cursos</button>
             <button class="btn btn-ghost btn-sm" id="adminCerrar">✕ Cerrar</button>
           </div>
         </div>
@@ -135,8 +136,127 @@
       document.body.appendChild(ov);
       document.getElementById("adminCerrar").addEventListener("click", () => ov.remove());
       document.getElementById("adminRefresh").addEventListener("click", cargarOverview);
+      document.getElementById("adminCourses").addEventListener("click", cargarCursosAdmin);
     }
     cargarOverview();
+  }
+
+  async function cargarCursosAdmin() {
+    const body = document.getElementById("adminBody");
+    body.innerHTML = '<div class="admin-loading">Cargando cursos…</div>';
+    let data;
+    try {
+      data = await llamar("course_catalog");
+    } catch (e) {
+      body.innerHTML = `<div class="admin-loading">⚠️ ${e.message}<br><br>Si acabas de agregar esta feature, primero aplica la migración de cursos configurables.</div>`;
+      return;
+    }
+
+    const courses = data.courses || [];
+    const rows = courses.map((c) => {
+      const mods = c.course_modules || [];
+      const items = mods.flatMap((m) => m.course_items || []);
+      return `<tr>
+        <td>${escapar(c.emoji || "📚")} ${escapar(c.title)}<br><span style="color:var(--text-dim);font-size:12px">${escapar(c.id)}</span></td>
+        <td>${mods.length}</td>
+        <td>${items.length}</td>
+        <td>${c.is_published ? "Publicado" : "Borrador"}</td>
+        <td class="acciones"><button class="btn-row danger" data-del-course="${escapar(c.id)}">Borrar</button></td>
+      </tr>`;
+    }).join("");
+
+    body.innerHTML = `
+      <div class="admin-section-title">Cursos configurables</div>
+      <table class="admin-table">
+        <thead><tr><th>Curso</th><th>Módulos</th><th>Preguntas</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" class="admin-loading">Sin cursos en Supabase.</td></tr>'}</tbody>
+      </table>
+
+      <div class="admin-detail">
+        <h3 style="margin-top:0">Guardar curso</h3>
+        <textarea id="courseJson" class="admin-json"></textarea>
+        <button class="btn btn-primary btn-sm" id="saveCourseJson">Guardar curso</button>
+      </div>
+
+      <div class="admin-detail">
+        <h3 style="margin-top:0">Guardar módulo</h3>
+        <textarea id="moduleJson" class="admin-json"></textarea>
+        <button class="btn btn-primary btn-sm" id="saveModuleJson">Guardar módulo</button>
+      </div>
+
+      <div class="admin-detail">
+        <h3 style="margin-top:0">Guardar pregunta</h3>
+        <textarea id="itemJson" class="admin-json"></textarea>
+        <button class="btn btn-primary btn-sm" id="saveItemJson">Guardar pregunta</button>
+      </div>`;
+
+    document.getElementById("courseJson").value = JSON.stringify({
+      id: "nuevo-curso",
+      title: "Nuevo curso",
+      subtitle: "Subtítulo",
+      description: "Descripción del curso",
+      emoji: "📚",
+      sort_order: 30,
+      is_published: false,
+    }, null, 2);
+    document.getElementById("moduleJson").value = JSON.stringify({
+      id: "nuevo-modulo",
+      course_id: "nuevo-curso",
+      title: "Nuevo módulo",
+      emoji: "📦",
+      intro: "Introducción corta",
+      theory: "<p>Teoría en HTML.</p>",
+      sort_order: 10,
+      is_published: true,
+    }, null, 2);
+    document.getElementById("itemJson").value = JSON.stringify({
+      id: "pregunta-01",
+      course_id: "nuevo-curso",
+      module_id: "nuevo-modulo",
+      type: "quiz_single",
+      title: "Pregunta de ejemplo",
+      level: 1,
+      statement_html: "<p>Enunciado de la pregunta.</p>",
+      hint: "Pista corta",
+      options: [{ id: "a", label: "Alternativa A" }, { id: "b", label: "Alternativa B" }],
+      correct_answer: "a",
+      explanation: "Explicación de la respuesta correcta.",
+      sort_order: 10,
+      is_published: true,
+    }, null, 2);
+
+    document.getElementById("saveCourseJson").addEventListener("click", () => guardarEntidadJson("save_course", "course", "courseJson"));
+    document.getElementById("saveModuleJson").addEventListener("click", () => guardarEntidadJson("save_module", "module", "moduleJson"));
+    document.getElementById("saveItemJson").addEventListener("click", () => guardarEntidadJson("save_item", "item", "itemJson"));
+    body.querySelectorAll("[data-del-course]").forEach((b) =>
+      b.addEventListener("click", () => borrarEntidadCurso("courses", b.getAttribute("data-del-course"))));
+  }
+
+  async function guardarEntidadJson(action, key, textareaId) {
+    let payload;
+    try {
+      payload = JSON.parse(document.getElementById(textareaId).value);
+    } catch {
+      alert("JSON inválido.");
+      return;
+    }
+    try {
+      await llamar(action, { [key]: payload });
+      alert("Guardado.");
+      cargarCursosAdmin();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function borrarEntidadCurso(table, id) {
+    if (!confirm(`¿Borrar ${id}?`)) return;
+    try {
+      await llamar("delete_course_entity", { table, id });
+      cargarCursosAdmin();
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   async function cargarOverview() {

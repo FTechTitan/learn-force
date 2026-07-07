@@ -2,14 +2,14 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:1280px;height:720px;overflow:hidden;background:#0f1117;
   font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e6e9f0}
-.slide{position:relative;width:1280px;height:720px;padding:64px 72px;display:flex;flex-direction:column}
+.slide{position:relative;width:1280px;height:720px;padding:52px 72px;display:flex;flex-direction:column}
 .bar{position:absolute;left:0;top:0;width:10px;height:100%;background:var(--ac)}
 .kicker{font-size:20px;color:var(--ac);font-weight:700;letter-spacing:.3px}
-.head h2{font-size:46px;margin:10px 0 6px;letter-spacing:-.5px}
-.sub{font-size:24px;color:#9aa3b6;line-height:1.4;max-width:1050px}
-.code{margin-top:26px;background:#161a23;border:1px solid #2a3040;border-left:4px solid var(--ac);
-  border-radius:12px;padding:26px 30px;font-family:'JetBrains Mono','Fira Code',Consolas,monospace;
-  font-size:27px;line-height:1.5;overflow:hidden}
+.head h2{font-size:44px;margin:8px 0 6px;letter-spacing:-.5px}
+.sub{font-size:23px;color:#9aa3b6;line-height:1.35;max-width:1050px}
+.code{margin-top:20px;background:#161a23;border:1px solid #2a3040;border-left:4px solid var(--ac);
+  border-radius:12px;padding:22px 28px;font-family:'JetBrains Mono','Fira Code',Consolas,monospace;
+  line-height:1.45;overflow:hidden}
 .code code{white-space:pre}
 .bullets{margin-top:30px;list-style:none}
 .bullets li{font-size:30px;line-height:1.5;margin-bottom:18px;padding-left:42px;position:relative}
@@ -25,47 +25,47 @@ html,body{width:1280px;height:720px;overflow:hidden;background:#0f1117;
 .hljs-number{color:#d19a66}.hljs-comment{color:#7f8aa0;font-style:italic}
 .hljs-title{color:#61afef}.hljs-params{color:#e6e9f0}
 
-body{display:flex;align-items:center;justify-content:center;min-height:100vh}.slide{box-shadow:0 20px 60px rgba(0,0,0,.6)}</style></head><body style="--ac:#ffd43b"><section class="slide"><div class="cover"><div class="emoji">🔁</div><h1>Ciclos en Python</h1><p class="cover-sub">Análisis técnico · Guía 03 — while · for · range · contadores</p></div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Hoja de ruta</h2></div><ul class="bullets"><li>1 · ¿Qué es una estructura iterativa?</li><li>2 · Controlar ciclos con while</li><li>3 · Ciclos definidos con for + range</li><li>4 · for vs while: elegir la herramienta</li><li>5 · Ejercicios: cajero, acumulador, robot</li></ul><div class="pager">2 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>1 · ¿Qué es iterar?</h2><p class="sub">Repetir un bloque mientras se cumpla una condición o sobre una secuencia.</p></div><ul class="bullets"><li>Evita escribir la misma línea 100 veces</li><li>Dos pilares en Python: while y for</li></ul><div class="pager">3 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>2 · while — el guardián</h2><p class="sub">Evalúa la condición ANTES de cada vuelta:</p></div><pre class="code"><code class="language-python">contador = 0
+body{display:flex;align-items:center;justify-content:center;min-height:100vh}.slide{box-shadow:0 20px 60px rgba(0,0,0,.6)}</style></head><body style="--ac:#ffd43b"><section class="slide"><div class="cover"><div class="emoji">🔁</div><h1>Ciclos en Python</h1><p class="cover-sub">Análisis técnico · Guía 03 — while · for · range · contadores</p></div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Hoja de ruta</h2></div><ul class="bullets"><li>1 · ¿Qué es una estructura iterativa?</li><li>2 · Controlar ciclos con while</li><li>3 · Ciclos definidos con for + range</li><li>4 · for vs while: elegir la herramienta</li><li>5 · Ejercicios: cajero, acumulador, robot</li></ul><div class="pager">2 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>1 · ¿Qué es iterar?</h2><p class="sub">Repetir un bloque mientras se cumpla una condición o sobre una secuencia.</p></div><ul class="bullets"><li>Evita escribir la misma línea 100 veces</li><li>Dos pilares en Python: while y for</li></ul><div class="pager">3 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>2 · while — el guardián</h2><p class="sub">Evalúa la condición ANTES de cada vuelta:</p></div><pre class="code" style="font-size:28px"><code class="language-python">contador = 0
 while contador &lt; 5:
     print(contador)
-    contador += 1     # ← actualizar la condición</code></pre><div class="pager">4 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>while + continue</h2><p class="sub">Repetir hasta que el usuario teclee 0:</p></div><pre class="code"><code class="language-python">n = int(input("Número (0 corta): "))
+    contador += 1     # ← actualizar la condición</code></pre><div class="pager">4 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>while + continue</h2><p class="sub">Repetir hasta que el usuario teclee 0:</p></div><pre class="code" style="font-size:28px"><code class="language-python">n = int(input("Número (0 corta): "))
 while n != 0:
     if n &gt; 0:
         print("Positivo")
-    n = int(input("Otro: "))   # ← volver a preguntar</code></pre><div class="pager">5 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>⚠️ Errores del while</h2><p class="sub">Bucle infinito y salida de emergencia:</p></div><pre class="code"><code class="language-python"># Olvidar actualizar la variable → cuelga
+    n = int(input("Otro: "))   # ← volver a preguntar</code></pre><div class="pager">5 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>⚠️ Errores del while</h2><p class="sub">Bucle infinito y salida de emergencia:</p></div><pre class="code" style="font-size:25px"><code class="language-python"># Olvidar actualizar la variable → cuelga
 while n != 0:
     print(n)          # n nunca cambia
 
 while True:
     if listo:
-        break         # salida inmediata</code></pre><div class="pager">6 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>3 · for + range</h2><p class="sub">Cuando sabés cuántas vueltas dar:</p></div><pre class="code"><code class="language-python">for i in range(1, 6):     # 1, 2, 3, 4, 5
+        break         # salida inmediata</code></pre><div class="pager">6 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>3 · for + range</h2><p class="sub">Cuando sabés cuántas vueltas dar:</p></div><pre class="code" style="font-size:28px"><code class="language-python">for i in range(1, 6):     # 1, 2, 3, 4, 5
     print(i)
 
-range(inicio, fin, paso)  # 'fin' NO se incluye</code></pre><div class="pager">7 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>⚠️ Error off-by-one</h2><p class="sub">range se detiene en fin − 1:</p></div><pre class="code"><code class="language-python"># Para contar del 1 al 10:
+range(inicio, fin, paso)  # 'fin' NO se incluye</code></pre><div class="pager">7 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>⚠️ Error off-by-one</h2><p class="sub">range se detiene en fin − 1:</p></div><pre class="code" style="font-size:28px"><code class="language-python"># Para contar del 1 al 10:
 for i in range(1, 11):    # ✔ el 11 queda fuera
     print(i)
 
-range(1, 10)   # ✗ solo llega a 9</code></pre><div class="pager">8 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Traza del for</h2><p class="sub">range(1, 6) imprime 5 símbolos:</p></div><pre class="code"><code class="language-python">for i in range(1, 6):
+range(1, 10)   # ✗ solo llega a 9</code></pre><div class="pager">8 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Traza del for</h2><p class="sub">range(1, 6) imprime 5 símbolos:</p></div><pre class="code" style="font-size:28px"><code class="language-python">for i in range(1, 6):
     print("#", end="")
 
-# Salida:  #####   (5 almohadillas)</code></pre><div class="pager">9 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>4 · for vs while</h2><p class="sub">Mismo resultado, el for es más compacto:</p></div><pre class="code"><code class="language-python"># while → 4 líneas
+# Salida:  #####   (5 almohadillas)</code></pre><div class="pager">9 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>4 · for vs while</h2><p class="sub">Mismo resultado, el for es más compacto:</p></div><pre class="code" style="font-size:25px"><code class="language-python"># while → 4 líneas
 i = 0
 while i &lt; 5:
     print("#", end=""); i += 1
 
 # for → 2 líneas (incremento automático)
 for i in range(5):
-    print("#", end="")</code></pre><div class="pager">10 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>5 · Cajero (contador)</h2><p class="sub">Máximo 3 intentos: patrón contador dentro de while:</p></div><pre class="code"><code class="language-python">intentos = 0
+    print("#", end="")</code></pre><div class="pager">10 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>5 · Cajero (contador)</h2><p class="sub">Máximo 3 intentos: patrón contador dentro de while:</p></div><pre class="code" style="font-size:28px"><code class="language-python">intentos = 0
 clave = "1234"
 pin = input("PIN: ")
 while intentos &lt; 3 and pin != clave:
     intentos += 1
-    pin = input("PIN incorrecto, reintentá: ")</code></pre><div class="pager">11 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Acumulador</h2><p class="sub">Suma valores variables hasta una señal de parada (−1):</p></div><pre class="code"><code class="language-python">suma = 0
+    pin = input("PIN incorrecto, reintentá: ")</code></pre><div class="pager">11 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Acumulador</h2><p class="sub">Suma valores variables hasta una señal de parada (−1):</p></div><pre class="code" style="font-size:28px"><code class="language-python">suma = 0
 n = int(input("Número (-1 termina): "))
 while n != -1:
     suma += n          # acumula
     n = int(input(": "))
-print("Suma:", suma)</code></pre><div class="pager">12 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Robot: máquina de estados</h2><p class="sub">Procesa comandos y actualiza coordenadas hasta 'salir':</p></div><pre class="code"><code class="language-python">import math
+print("Suma:", suma)</code></pre><div class="pager">12 / 13</div></section><section class="slide" hidden><div class="bar"></div><div class="head"><span class="kicker">🔁 Ciclos en Python · Guía 03</span><h2>Robot: máquina de estados</h2><p class="sub">Procesa comandos y actualiza coordenadas hasta 'salir':</p></div><pre class="code" style="font-size:25px"><code class="language-python">import math
 x = y = 0
 orden = input("Comando: ")
 while orden != "salir":
