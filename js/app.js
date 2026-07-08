@@ -10,6 +10,7 @@
 
   const STORAGE_KEY = "progra-uai-progreso-v1";
   const COURSE_STORAGE_KEY = "progra-uai-curso-activo-v1";
+  const CANONICAL_ORIGIN = "https://learn.techforce.cl";
   const VAPID_PUBLIC_KEY = "BNCz7TMy0I4UmeS2JVnqrCzxqryUvP41NKb8aMUbkVXoZVnqS0M51vs2l59SheD03lRCy1IPYI_SW5gPSC8wqQ8";
   let cursos = [];
   let cursoActual = null;
@@ -731,7 +732,7 @@
   function urlEjercicioActual() {
     if (!cursoActual || !ejercicioActual) return window.location.href;
     const hash = hashEjercicio(slugCurso(cursoActual), ejercicioActual.moduloId, ejercicioActual.id);
-    return `${window.location.origin}${window.location.pathname}${hash}`;
+    return `${CANONICAL_ORIGIN}/${hash}`;
   }
 
   function compartirEjercicioWsp() {

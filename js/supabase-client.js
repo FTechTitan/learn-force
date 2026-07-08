@@ -19,6 +19,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, 
 // ---------------------------------------------------------------------------
 const Auth = {
   cliente: sb,
+  redirectUrl: "https://learn.techforce.cl",
 
   async usuarioActual() {
     const { data } = await sb.auth.getUser();
@@ -42,7 +43,7 @@ const Auth = {
     const { data, error } = await sb.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + window.location.pathname,
+        redirectTo: Auth.redirectUrl,
       },
     });
     if (error) throw error;

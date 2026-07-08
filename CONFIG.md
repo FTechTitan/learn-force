@@ -1,28 +1,27 @@
 # CONFIG — Infraestructura de progra-UAI
 
-Estado de despliegue y servicios del proyecto. Última actualización: 2026-06-05.
+Estado de despliegue y servicios del proyecto. Última actualización: 2026-07-08.
 
 ## 🌐 Dominios y URLs
 
 | URL | Estado | Notas |
 |-----|--------|-------|
-| **https://progra-uai.pages.dev** | ✅ **Activo** (producción) | URL oficial de Cloudflare Pages. Funciona 100%. |
-| **https://progra-uai.techforce.cl** | ✅ **Activo** (2026-06-05) | Custom domain. CNAME → `progra-uai.pages.dev`, proxied. Sirve con cert válido (HTTP 200). |
+| **https://learn.techforce.cl** | ✅ **Activo** (producción) | Dominio canónico de la app. Login y links compartidos apuntan acá. |
+| **https://progra-uai.pages.dev** | ✅ **Activo** | URL técnica de Cloudflare Pages. No usar como dominio público. |
 
-### Custom domain `progra-uai.techforce.cl` — configurado
+### Custom domain `learn.techforce.cl` — configurado
 
 Registro **CNAME** creado en la zona `techforce.cl` de Cloudflare:
 
 ```
 Tipo:    CNAME
-Nombre:  progra-uai
+Nombre:  learn
 Destino: progra-uai.pages.dev
 Proxy:   ✅ Proxied (naranja)
 ```
 
-> Creado con `CLOUDFLARE_TECHFORCE_API_TOKEN` (token de DNS pasado en sesión).
-> El dominio ya estaba registrado en el proyecto Pages; al crear el CNAME validó
-> y empezó a servir con HTTP 200 / cert Google en ~1 min.
+> `progra-uai.techforce.cl` fue retirado del proyecto Pages. Mantener solo
+> `learn.techforce.cl` como dominio público/canónico.
 
 ## ☁️ Cloudflare Pages
 
@@ -75,7 +74,7 @@ eso un `ls` de ese archivo no lo encuentra aunque el acceso funcione. No hace fa
 push de config funcionan directo.
 
 **Auth**: email + contraseña, **sin confirmación de email** (auto-confirm), signup abierto.
-Site URL → `https://progra-uai.pages.dev`.
+Site URL → `https://learn.techforce.cl`.
 
 **Tabla `public.progress`** (una fila por usuario+ejercicio):
 

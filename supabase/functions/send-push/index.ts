@@ -11,7 +11,6 @@ const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:fponce@techforce.
 const ALLOWED_ORIGINS = [
   "https://learn.techforce.cl",
   "https://progra-uai.pages.dev",
-  "https://progra-uai.techforce.cl",
   "http://127.0.0.1:8000",
   "http://localhost:8000",
 ];

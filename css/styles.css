@@ -239,7 +239,16 @@ body {
   padding: 8px 12px; font: 700 13px var(--font); cursor: pointer;
 }
 .exercise-back { display: none; }
-.exercise-share { display: inline-flex; align-items: center; }
+.exercise-share {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  width: 44px; height: 38px; padding: 0;
+}
+.wsp-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #25d366; color: #07130a; font-size: 13px; font-weight: 900;
+}
+.share-icon { color: var(--text); font-size: 16px; line-height: 1; }
 .exercise-back:hover,
 .exercise-share:hover { border-color: var(--py-blue); }
 .exercise-header { margin-bottom: 16px; }
@@ -474,10 +483,7 @@ textarea.guided-input { resize: vertical; min-height: 72px; }
 @media (max-width: 760px) {
   body.exercise-focus { overflow-x: hidden; }
   body.exercise-focus .topbar,
-  body.exercise-focus .sidebar,
-  body.exercise-focus .ai-fab,
-  body.exercise-focus .ai-panel,
-  body.exercise-focus elevenlabs-convai {
+  body.exercise-focus .sidebar {
     display: none !important;
   }
   body.exercise-focus .layout {

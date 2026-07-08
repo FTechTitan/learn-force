@@ -41,8 +41,8 @@ async function registrarPregunta(
 }
 
 const ALLOWED_ORIGINS = [
+  "https://learn.techforce.cl",
   "https://progra-uai.pages.dev",
-  "https://progra-uai.techforce.cl",
   "http://127.0.0.1:8000",
   "http://localhost:8000",
 ];

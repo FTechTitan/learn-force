@@ -10,8 +10,8 @@ const MODEL = "whisper-1";
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB (Whisper admite hasta 25)
 
 const ALLOWED_ORIGINS = [
+  "https://learn.techforce.cl",
   "https://progra-uai.pages.dev",
-  "https://progra-uai.techforce.cl",
   "http://127.0.0.1:8000",
   "http://localhost:8000",
 ];

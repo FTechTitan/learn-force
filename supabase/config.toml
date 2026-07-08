@@ -151,13 +151,12 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "https://progra-uai.pages.dev"
+site_url = "https://learn.techforce.cl"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
-  "https://progra-uai.pages.dev",
-  "https://progra-uai.techforce.cl",
+  "https://learn.techforce.cl",
   "http://127.0.0.1:8000",
   "http://localhost:8000"
 ]

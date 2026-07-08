@@ -12,8 +12,8 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const ALLOWED_ORIGINS = [
+  "https://learn.techforce.cl",
   "https://progra-uai.pages.dev",
-  "https://progra-uai.techforce.cl",
   "http://127.0.0.1:8000",
   "http://localhost:8000",
 ];
