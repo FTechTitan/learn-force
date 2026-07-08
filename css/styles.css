@@ -487,31 +487,40 @@ textarea.guided-input { resize: vertical; min-height: 72px; }
   .workspace { padding: 18px; }
 }
 
+body.exercise-focus {
+  overflow-x: hidden;
+}
+body.exercise-focus .topbar,
+body.exercise-focus .sidebar {
+  display: none !important;
+}
+body.exercise-focus .layout {
+  display: block;
+  min-height: 100vh;
+}
+body.exercise-focus .workspace {
+  max-width: none;
+  min-height: 100vh;
+  padding: 12px;
+  overflow: visible;
+}
+body.exercise-focus .exercise {
+  min-height: calc(100vh - 24px);
+}
+body.exercise-focus .exercise-back {
+  display: inline-flex;
+  align-items: center;
+}
+body.exercise-focus .exercise-nav {
+  justify-content: space-between;
+}
+
 @media (max-width: 760px) {
-  body.exercise-focus { overflow-x: hidden; }
-  body.exercise-focus .topbar,
-  body.exercise-focus .sidebar {
-    display: none !important;
-  }
-  body.exercise-focus .layout {
-    display: block;
-    min-height: 100vh;
-  }
   body.exercise-focus .workspace {
-    max-width: none;
-    min-height: 100vh;
     padding: 10px;
-    overflow: visible;
   }
   body.exercise-focus .exercise {
     min-height: calc(100vh - 20px);
-  }
-  body.exercise-focus .exercise-back {
-    display: inline-flex;
-    align-items: center;
-  }
-  body.exercise-focus .exercise-nav {
-    justify-content: space-between;
   }
   body.exercise-focus .exercise-header {
     margin-bottom: 10px;
