@@ -44,9 +44,12 @@ const Auth = {
       provider: "google",
       options: {
         redirectTo: Auth.redirectUrl,
+        skipBrowserRedirect: true,
       },
     });
     if (error) throw error;
+    if (data?.url) window.location.assign(data.url);
+    else throw new Error("Google no devolvió una URL de inicio de sesión.");
     return data;
   },
 
