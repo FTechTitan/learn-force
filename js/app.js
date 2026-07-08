@@ -73,6 +73,12 @@
     if ("serviceWorker" in navigator) {
       try {
         swRegistration = await navigator.serviceWorker.register("/sw.js");
+        let refrescadoPorSw = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refrescadoPorSw) return;
+          refrescadoPorSw = true;
+          window.location.reload();
+        });
       } catch (e) {
         console.warn("No se pudo registrar el service worker", e);
       }

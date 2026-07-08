@@ -1,4 +1,4 @@
-const CACHE_NAME = "techforce-learn-v2";
+const CACHE_NAME = "techforce-learn-v3";
 
 const APP_SHELL = [
   "/",
@@ -52,6 +52,21 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match("/index.html"))
+    );
+    return;
+  }
+
+  if (["script", "style", "worker"].includes(request.destination) || url.pathname.endsWith(".webmanifest")) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
