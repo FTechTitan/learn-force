@@ -126,6 +126,7 @@ function normalizarCurso(row) {
           correctAnswer: it.correct_answer,
           explanation: it.explanation || "",
           solutionHtml: it.solution_html || "",
+          steps: it.steps || [],
         })),
     }));
 
@@ -174,6 +175,7 @@ const CursosRemotos = {
             correct_answer,
             explanation,
             solution_html,
+            steps,
             sort_order
           )
         )

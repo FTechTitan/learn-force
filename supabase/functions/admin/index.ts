@@ -236,6 +236,7 @@ Deno.serve(async (req: Request) => {
         correct_answer: item.correct_answer ? String(item.correct_answer) : null,
         explanation: item.explanation ? String(item.explanation) : null,
         solution_html: item.solution_html ? String(item.solution_html) : null,
+        steps: item.steps || [],
         sort_order: Number(item.sort_order || 0),
         is_published: item.is_published !== false,
       };

@@ -279,6 +279,54 @@ body {
   flex: 0 0 auto;
 }
 
+/* ---------- Guided steps ---------- */
+.guided-steps { display: grid; gap: 12px; }
+.guided-step {
+  background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px;
+}
+.guided-step.active { border-color: var(--py-blue); }
+.guided-step.correct { border-color: var(--green); }
+.guided-step.locked { opacity: .58; }
+.guided-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.guided-index {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; flex: 0 0 auto;
+  border-radius: 50%; background: #0c0e14; color: var(--py-yellow);
+  font-weight: 800; font-size: 13px;
+}
+.guided-step.correct .guided-index { color: #07130a; background: var(--green); }
+.guided-head h3 { margin: 2px 0 0; font-size: 15px; }
+.guided-status, .guided-prompt { margin: 4px 0 10px; color: var(--text-dim); }
+.guided-content {
+  background: #0c0e14; border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; margin: 8px 0 12px;
+}
+.guided-content ul { margin: 0; padding-left: 18px; }
+.guided-options { display: grid; gap: 8px; margin: 8px 0 12px; }
+.guided-choice {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 8px; background: #0c0e14; cursor: pointer;
+}
+.guided-choice:hover { border-color: var(--py-blue); }
+.guided-input-label { display: grid; gap: 8px; margin: 8px 0 12px; color: var(--text-dim); }
+.guided-input {
+  width: 100%; background: #0c0e14; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font: 14px var(--font);
+}
+.guided-input:focus { outline: none; border-color: var(--py-blue); }
+textarea.guided-input { resize: vertical; min-height: 72px; }
+.guided-hint { margin: 10px 0 0; }
+.guided-hint summary { cursor: pointer; color: var(--py-yellow); font-size: 13px; }
+.guided-hint p { color: var(--text-dim); margin: 6px 0 0; }
+.guided-feedback {
+  margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+  background: #0c0e14; border: 1px solid var(--border);
+}
+.guided-feedback p { margin: 6px 0 0; color: var(--text-dim); }
+
 /* ---------- Editor ---------- */
 .editor-zone {
   border: 1px solid var(--border); border-radius: var(--radius);

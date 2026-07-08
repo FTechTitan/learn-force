@@ -31,11 +31,11 @@
   function cargarProgreso() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { completados: {}, codigo: {} };
+      if (!raw) return { completados: {}, codigo: {}, pasos: {} };
       const data = JSON.parse(raw);
-      return { completados: data.completados || {}, codigo: data.codigo || {} };
+      return { completados: data.completados || {}, codigo: data.codigo || {}, pasos: data.pasos || {} };
     } catch {
-      return { completados: {}, codigo: {} };
+      return { completados: {}, codigo: {}, pasos: {} };
     }
   }
 
@@ -190,12 +190,10 @@
     if (ejercicioActual && indiceActual >= 0) abrirEjercicio(indiceActual);
   }
 
-  // Un ejercicio está desbloqueado si es el primero o si el anterior ya se
-  // completó. Así se avanza "de a poco".
+  // Todos los ejercicios quedan disponibles desde el inicio. El progreso sigue
+  // marcando completados, pero no bloquea navegación dentro del curso.
   function estaDesbloqueado(index) {
-    if (index === 0) return true;
-    const anterior = ejerciciosPlanos[index - 1];
-    return !!estado.completados[anterior.id];
+    return index >= 0 && index < ejerciciosPlanos.length;
   }
 
   // --- Referencias al DOM --------------------------------------------------
@@ -307,7 +305,8 @@
         if (ejercicioActual && ej.id === ejercicioActual.id) item.classList.add("activo");
 
         const estadoIcon = completado ? "✅" : desbloqueado ? "⚪" : "🔒";
-        const dots = (ej.type || "code").startsWith("quiz") ? "quiz" : "●".repeat(ej.nivel || 1);
+        const tipo = ej.type || "code";
+        const dots = tipo === "guided_steps" ? "pasos" : tipo.startsWith("quiz") ? "quiz" : "●".repeat(ej.nivel || 1);
 
         item.innerHTML = `
           <span class="estado">${estadoIcon}</span>
@@ -336,7 +335,7 @@
 
   function cursoTieneCodigo() {
     if (!cursoActual) return false;
-    return ejerciciosPlanos.some((e) => !((e.type || "code").startsWith("quiz")));
+    return ejerciciosPlanos.some((e) => (e.type || "code") === "code");
   }
 
   function pintarWelcome() {
@@ -391,7 +390,7 @@
           <li>🔓 Al completar ejercicios se desbloquean los siguientes.</li>`;
       } else {
         list.innerHTML = `
-          <li>✅ Responde verdadero/falso o alternativas.</li>
+          <li>✅ Responde verdadero/falso, alternativas o ejercicios paso a paso.</li>
           <li>📌 Revisa la explicación inmediata después de comprobar.</li>
           <li>🔓 Al responder correctamente se desbloquea la siguiente pregunta.</li>
           <li>📈 Usa el progreso para repetir solo donde fallaste.</li>`;
@@ -517,13 +516,17 @@
     $("#exPista").textContent = ej.pista || "Pensá el problema paso a paso.";
     quizRespuesta = null;
 
-    const esQuiz = (ej.type || "code").startsWith("quiz");
-    $("#quizArea").classList.toggle("hidden", !esQuiz);
-    document.querySelector(".editor-zone").classList.toggle("hidden", esQuiz);
-    document.querySelector(".output-zone").querySelector("h3").textContent = esQuiz ? "Corrección" : "Resultado";
+    const tipo = ej.type || "code";
+    const esQuiz = tipo.startsWith("quiz");
+    const esGuiado = tipo === "guided_steps";
+    $("#quizArea").classList.toggle("hidden", !(esQuiz || esGuiado));
+    document.querySelector(".editor-zone").classList.toggle("hidden", esQuiz || esGuiado);
+    document.querySelector(".output-zone").querySelector("h3").textContent = (esQuiz || esGuiado) ? "Corrección" : "Resultado";
 
     if (esQuiz) {
       pintarQuiz(ej);
+    } else if (esGuiado) {
+      pintarPasosGuiados(ej);
     } else {
       // Restaura el código guardado del alumno o el starter del ejercicio.
       const guardado = estado.codigo[ej.id];
@@ -536,6 +539,8 @@
     outputEl.className = "output";
     outputEl.textContent = esQuiz
       ? "Elige una respuesta y toca «Comprobar»."
+      : esGuiado
+      ? "Completa el paso activo para avanzar."
       : "Tocá «Ejecutar» o «Comprobar» para ver la salida.";
 
     // El botón Siguiente se habilita solo si ya está completado.
@@ -568,9 +573,178 @@
     });
   }
 
+  function estadoPasos(ej) {
+    if (!estado.pasos[ej.id]) estado.pasos[ej.id] = { current: 0, correct: {}, answers: {}, feedback: {} };
+    const st = estado.pasos[ej.id];
+    st.current = Number(st.current || 0);
+    st.correct ||= {};
+    st.answers ||= {};
+    st.feedback ||= {};
+    return st;
+  }
+
+  function pintarPasosGuiados(ej) {
+    const area = $("#quizArea");
+    const pasos = Array.isArray(ej.steps) ? ej.steps : [];
+    const st = estadoPasos(ej);
+    if (!pasos.length) {
+      area.innerHTML = '<p class="dim">Este ejercicio no tiene pasos configurados.</p>';
+      return;
+    }
+
+    area.innerHTML = `<div class="guided-steps">
+      ${pasos.map((paso, i) => pintarPasoGuiado(ej, paso, i, st)).join("")}
+    </div>`;
+
+    area.querySelectorAll("[data-step-check]").forEach((btn) => {
+      btn.addEventListener("click", () => comprobarPasoGuiado(Number(btn.getAttribute("data-step-check"))));
+    });
+  }
+
+  function pintarPasoGuiado(ej, paso, i, st) {
+    const correcto = !!st.correct[i];
+    const bloqueado = i > st.current && !correcto;
+    const activo = i === st.current && !correcto;
+    const cls = ["guided-step"];
+    if (correcto) cls.push("correct");
+    if (bloqueado) cls.push("locked");
+    if (activo) cls.push("active");
+    const feedback = st.feedback[i] || "";
+    return `
+      <section class="${cls.join(" ")}" data-step="${i}">
+        <div class="guided-head">
+          <span class="guided-index">${correcto ? "✓" : i + 1}</span>
+          <div>
+            <h3>${escaparHtml(paso.title || `Paso ${i + 1}`)}</h3>
+            ${bloqueado ? '<p class="guided-status">Completa el paso anterior para desbloquear.</p>' : ""}
+          </div>
+        </div>
+        ${bloqueado ? "" : pintarControlPaso(paso, i, st.answers[i])}
+        ${bloqueado || !paso.hint ? "" : `<details class="guided-hint"><summary>Pista</summary><p>${escaparHtml(paso.hint)}</p></details>`}
+        ${feedback ? `<div class="guided-feedback">${feedback}</div>` : ""}
+      </section>`;
+  }
+
+  function pintarControlPaso(paso, i, valorPrevio) {
+    if (paso.kind === "info") {
+      return `
+        <div class="guided-content">${paso.content_html || ""}</div>
+        <button type="button" class="btn btn-primary btn-sm" data-step-check="${i}">Continuar</button>`;
+    }
+    if (paso.kind === "single") {
+      const opciones = paso.options || [];
+      return `
+        <p class="guided-prompt">${escaparHtml(paso.prompt || "")}</p>
+        <div class="guided-options">
+          ${opciones.map((op) => `
+            <label class="guided-choice">
+              <input type="radio" name="guided-${i}" value="${escaparHtml(op.id)}" ${String(valorPrevio || "") === String(op.id) ? "checked" : ""}>
+              <span>${escaparHtml(op.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" data-step-check="${i}">Comprobar paso</button>`;
+    }
+    if (paso.kind === "boolean") {
+      return `
+        <p class="guided-prompt">${escaparHtml(paso.prompt || "")}</p>
+        <div class="guided-options">
+          <label class="guided-choice"><input type="radio" name="guided-${i}" value="true" ${valorPrevio === true || valorPrevio === "true" ? "checked" : ""}> <span>Verdadero</span></label>
+          <label class="guided-choice"><input type="radio" name="guided-${i}" value="false" ${valorPrevio === false || valorPrevio === "false" ? "checked" : ""}> <span>Falso</span></label>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" data-step-check="${i}">Comprobar paso</button>`;
+    }
+    const multiline = paso.kind === "short_text" || paso.kind === "formula";
+    const valor = valorPrevio == null ? "" : String(valorPrevio);
+    return `
+      <label class="guided-input-label">
+        <span>${escaparHtml(paso.prompt || "Ingresa tu respuesta.")}</span>
+        ${multiline
+          ? `<textarea class="guided-input" data-step-input="${i}" rows="3">${escaparHtml(valor)}</textarea>`
+          : `<input class="guided-input" data-step-input="${i}" type="text" value="${escaparHtml(valor)}">`}
+      </label>
+      <button type="button" class="btn btn-primary btn-sm" data-step-check="${i}">Comprobar paso</button>`;
+  }
+
+  function comprobarPasoGuiado(i) {
+    const ej = ejercicioActual;
+    const paso = (ej.steps || [])[i];
+    if (!paso) return;
+    const st = estadoPasos(ej);
+    const respuesta = leerRespuestaPaso(paso, i);
+    const res = validarPaso(paso, respuesta);
+    st.answers[i] = respuesta;
+    st.feedback[i] = res.ok
+      ? `<span class="ok-line">Correcto.</span>${paso.explanation ? `<p>${escaparHtml(paso.explanation)}</p>` : ""}`
+      : `<span class="fail-line">No todavía.</span><p>${escaparHtml(res.message || paso.hint || "Revisa el paso e intenta de nuevo.")}</p>`;
+
+    if (res.ok) {
+      st.correct[i] = true;
+      while (st.correct[st.current] && st.current < (ej.steps || []).length - 1) st.current += 1;
+      const completo = (ej.steps || []).every((_p, idx) => st.correct[idx]);
+      if (completo) {
+        st.current = (ej.steps || []).length;
+        guardarProgreso();
+        pintarPasosGuiados(ej);
+        setOutput('<span class="ok-line">Ejercicio paso a paso completado.</span>', "ok");
+        marcarCompletado(ej);
+        return;
+      }
+      setOutput('<span class="ok-line">Paso correcto. Sigue con el siguiente.</span>', "ok");
+    } else {
+      setOutput('<span class="fail-line">Revisa este paso antes de avanzar.</span>', "fail");
+    }
+    guardarProgreso();
+    pintarPasosGuiados(ej);
+  }
+
+  function leerRespuestaPaso(paso, i) {
+    const area = $("#quizArea");
+    if (paso.kind === "single" || paso.kind === "boolean") {
+      const marcado = area.querySelector(`input[name="guided-${i}"]:checked`);
+      if (!marcado) return "";
+      return paso.kind === "boolean" ? marcado.value === "true" : marcado.value;
+    }
+    const input = area.querySelector(`[data-step-input="${i}"]`);
+    return input ? input.value.trim() : "";
+  }
+
+  function validarPaso(paso, respuesta) {
+    if (paso.kind === "info") return { ok: true };
+    if (paso.kind === "single") {
+      return { ok: String(respuesta) === String(paso.answer), message: "Elige otra alternativa." };
+    }
+    if (paso.kind === "boolean") {
+      if (respuesta === "") return { ok: false, message: "Selecciona verdadero o falso." };
+      return { ok: Boolean(respuesta) === Boolean(paso.answer), message: "Vuelve a evaluar la afirmación." };
+    }
+    if (paso.kind === "numeric") {
+      const valor = parseNumeroFlexible(respuesta);
+      const esperado = Number(paso.answer);
+      const tol = Number(paso.tolerance ?? 0);
+      if (!Number.isFinite(valor)) return { ok: false, message: "Ingresa un número válido." };
+      const directo = Math.abs(valor - esperado) <= tol;
+      const porcentaje = paso.allow_percent && Math.abs(valor / 100 - esperado) <= tol;
+      return { ok: directo || porcentaje, message: "El valor no calza con la tolerancia esperada." };
+    }
+    if (paso.kind === "short_text") {
+      const texto = normalizarTexto(respuesta);
+      const keys = paso.accepted_keywords || [];
+      const ok = keys.every((k) => texto.includes(normalizarTexto(k)));
+      return { ok, message: paso.sample_answer ? `Una respuesta esperada sería: ${paso.sample_answer}` : "Faltan ideas clave en la respuesta." };
+    }
+    if (paso.kind === "formula") {
+      const r = normalizarFormula(respuesta);
+      const aceptadas = paso.accepted || [];
+      const ok = aceptadas.some((f) => normalizarFormula(f) === r);
+      return { ok, message: "La fórmula no coincide con una forma esperada." };
+    }
+    return { ok: false, message: "Tipo de paso no soportado." };
+  }
+
   // --- Guarda el código del alumno mientras escribe ------------------------
   function guardarCodigoActual() {
-    if (!ejercicioActual) return;
+    if (!ejercicioActual || (ejercicioActual.type || "code") !== "code") return;
     estado.codigo[ejercicioActual.id] = editor.getValue();
     guardarProgreso();
   }
@@ -590,13 +764,34 @@
   }
 
   function escaparHtml(s) {
-    return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function normalizarTexto(s) {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function normalizarFormula(s) {
+    return normalizarTexto(s)
+      .replace(/×|·/g, "*")
+      .replace(/\s+/g, "")
+      .replace(/\*/g, "");
+  }
+
+  function parseNumeroFlexible(s) {
+    const limpio = String(s || "").replace("%", "").replace(",", ".").trim();
+    return Number(limpio);
   }
 
   // --- Botón Ejecutar ------------------------------------------------------
   async function onRun() {
-    if (ejercicioActual && (ejercicioActual.type || "code").startsWith("quiz")) {
-      setOutput("En este tipo de ejercicio no hay código que ejecutar. Elige una alternativa y toca «Comprobar».", "");
+    if (ejercicioActual && (ejercicioActual.type || "code") !== "code") {
+      setOutput("En este tipo de ejercicio no hay código que ejecutar. Resuelve la actividad en el panel.", "");
       return;
     }
     guardarCodigoActual();
@@ -624,6 +819,10 @@
   async function onCheck() {
     if (ejercicioActual && (ejercicioActual.type || "code").startsWith("quiz")) {
       comprobarQuiz();
+      return;
+    }
+    if (ejercicioActual && (ejercicioActual.type || "code") === "guided_steps") {
+      setOutput("Completa el paso activo usando el botón «Comprobar paso».", "");
       return;
     }
     guardarCodigoActual();
@@ -697,7 +896,7 @@
     estado.completados[ej.id] = true;
     guardarProgreso();
     const payload = { completed: true };
-    if (!(ej.type || "code").startsWith("quiz")) payload.code = editor.getValue();
+    if ((ej.type || "code") === "code") payload.code = editor.getValue();
     pushRemoto(ej.id, payload);
     renderSidebar();
     $("#btnNext").disabled = indiceActual >= ejerciciosPlanos.length - 1;
@@ -726,6 +925,7 @@
   // --- Botón Reiniciar código ----------------------------------------------
   function onReset() {
     if (!ejercicioActual) return;
+    if ((ejercicioActual.type || "code") !== "code") return;
     if (confirm("¿Volver al código inicial? Se perderá lo que escribiste en este ejercicio.")) {
       editor.setValue(ejercicioActual.starter || "");
       guardarCodigoActual();
@@ -820,7 +1020,7 @@
 
     editor.on("change", () => {
       // Guardado liviano del código mientras escribe (local + nube con debounce).
-      if (ejercicioActual) {
+      if (ejercicioActual && (ejercicioActual.type || "code") === "code") {
         const code = editor.getValue();
         estado.codigo[ejercicioActual.id] = code;
         pushCodigoDebounced(ejercicioActual.id, code);
@@ -828,7 +1028,9 @@
     });
     editor.on("blur", () => {
       guardarProgreso();
-      if (ejercicioActual) pushRemoto(ejercicioActual.id, { code: editor.getValue() });
+      if (ejercicioActual && (ejercicioActual.type || "code") === "code") {
+        pushRemoto(ejercicioActual.id, { code: editor.getValue() });
+      }
     });
 
     // Sincroniza con la nube cuando cambia la sesión (login/logout).
@@ -846,14 +1048,14 @@
     window.AsistenteContexto = () => {
       if (!ejercicioActual) return {};
       const enunciado = (ejercicioActual.enunciado || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      const esQuiz = (ejercicioActual.type || "code").startsWith("quiz");
+      const esCodigo = (ejercicioActual.type || "code") === "code";
       return {
         id: ejercicioActual.id,
         curso: cursoActual ? cursoActual.titulo : "",
         titulo: ejercicioActual.titulo,
         tipo: ejercicioActual.type || "code",
         enunciado,
-        codigo: esQuiz ? "" : editor.getValue(),
+        codigo: esCodigo ? editor.getValue() : "",
       };
     };
 
@@ -861,8 +1063,8 @@
     // Devuelve un mensaje de estado que el agente puede leer en voz.
     window.EscribirEnEditor = (codigo) => {
       if (!codigo || !String(codigo).trim()) return "No recibí código para escribir.";
-      if (ejercicioActual && (ejercicioActual.type || "code").startsWith("quiz")) {
-        return "Este ejercicio es de alternativas o verdadero/falso, no tiene editor de código.";
+      if (ejercicioActual && (ejercicioActual.type || "code") !== "code") {
+        return "Este ejercicio no tiene editor de código.";
       }
       if (!editor || exercise.classList.contains("hidden")) {
         return "El alumno no tiene ningún ejercicio abierto. Pedile que abra un ejercicio primero.";
