@@ -222,6 +222,14 @@ body {
 }
 
 /* ---------- Exercise ---------- */
+.exercise { position: relative; }
+.exercise-back {
+  display: none; margin: 0 0 12px;
+  background: var(--bg-card); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font: 700 13px var(--font); cursor: pointer;
+}
+.exercise-back:hover { border-color: var(--py-blue); }
 .exercise-header { margin-bottom: 16px; }
 .exercise-header h2 { margin: 8px 0 0; font-size: 24px; }
 .badge {
@@ -431,6 +439,50 @@ textarea.guided-input { resize: vertical; min-height: 72px; }
     max-height: 240px;
   }
   .workspace { padding: 18px; }
+}
+
+@media (max-width: 760px) {
+  body.exercise-focus { overflow-x: hidden; }
+  body.exercise-focus .topbar,
+  body.exercise-focus .sidebar,
+  body.exercise-focus .ai-fab,
+  body.exercise-focus .ai-panel,
+  body.exercise-focus elevenlabs-convai {
+    display: none !important;
+  }
+  body.exercise-focus .layout {
+    display: block;
+    min-height: 100vh;
+  }
+  body.exercise-focus .workspace {
+    max-width: none;
+    min-height: 100vh;
+    padding: 10px;
+    overflow: visible;
+  }
+  body.exercise-focus .exercise {
+    min-height: calc(100vh - 20px);
+  }
+  body.exercise-focus .exercise-back {
+    display: inline-flex;
+    align-items: center;
+  }
+  body.exercise-focus .exercise-header {
+    margin-bottom: 10px;
+  }
+  body.exercise-focus .exercise-header h2 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+  body.exercise-focus .statement,
+  body.exercise-focus .quiz-area,
+  body.exercise-focus .editor-zone,
+  body.exercise-focus .output {
+    border-radius: 8px;
+  }
+  body.exercise-focus .statement {
+    padding: 12px 14px;
+  }
 }
 
 /* ---------- Botón Pizarra (topbar) ---------- */

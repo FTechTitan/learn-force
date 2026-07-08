@@ -68,6 +68,7 @@
   }
 
   function mostrarCatalogo() {
+    document.body.classList.remove("exercise-focus");
     cursoActual = null;
     localStorage.removeItem(COURSE_STORAGE_KEY);
     reconstruirEjerciciosPlanos();
@@ -91,6 +92,7 @@
     }
     const curso = cursos.find((c) => c.id === courseId);
     if (!curso) return;
+    document.body.classList.remove("exercise-focus");
     cursoActual = curso;
     localStorage.setItem(COURSE_STORAGE_KEY, cursoActual.id);
     reconstruirEjerciciosPlanos();
@@ -109,6 +111,7 @@
   }
 
   function mezclarCursosRemotos(remotos) {
+    document.body.classList.remove("exercise-focus");
     cursos = remotos || [];
     cursoActual = null;
     reconstruirEjerciciosPlanos();
@@ -446,6 +449,7 @@
 
   // Muestra el panel de media y oculta welcome/ejercicio.
   function mostrarPanelMedia(badge, titulo, subHtml, items, teoriaHtml, claveActiva, presUrl) {
+    document.body.classList.remove("exercise-focus");
     ejercicioActual = null;
     indiceActual = -1;
     mediaActual = claveActiva;
@@ -504,6 +508,7 @@
     ejercicioActual = ej;
     indiceActual = index;
     mediaActual = null;
+    document.body.classList.add("exercise-focus");
 
     welcome.classList.add("hidden");
     mediaPanel.classList.add("hidden");
@@ -543,9 +548,22 @@
       ? "Completa el paso activo para avanzar."
       : "Tocá «Ejecutar» o «Comprobar» para ver la salida.";
 
-    // El botón Siguiente se habilita solo si ya está completado.
-    $("#btnNext").disabled = !estado.completados[ej.id];
+    $("#btnNext").disabled = indiceActual >= ejerciciosPlanos.length - 1;
 
+    renderSidebar();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function volverAlCurso() {
+    document.body.classList.remove("exercise-focus");
+    ejercicioActual = null;
+    indiceActual = -1;
+    mediaActual = null;
+    quizRespuesta = null;
+    exercise.classList.add("hidden");
+    mediaPanel.classList.add("hidden");
+    welcome.classList.remove("hidden");
+    pintarWelcome();
     renderSidebar();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -1090,6 +1108,7 @@
     $("#btnCheck").addEventListener("click", onCheck);
     $("#btnNext").addEventListener("click", onNext);
     $("#btnReset").addEventListener("click", onReset);
+    $("#btnBackToCourse").addEventListener("click", volverAlCurso);
 
     iniciarHeartbeat();
     precargarPython();
