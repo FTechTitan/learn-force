@@ -193,6 +193,7 @@
     ejercicioActual = null;
     indiceActual = -1;
     mediaActual = null;
+    moduloExpandidoId = null;
     quizRespuesta = null;
     exercise.classList.add("hidden");
     mediaPanel.classList.add("hidden");
@@ -218,6 +219,7 @@
     ejercicioActual = null;
     indiceActual = -1;
     mediaActual = null;
+    moduloExpandidoId = null;
     quizRespuesta = null;
     exercise.classList.add("hidden");
     mediaPanel.classList.add("hidden");
@@ -249,6 +251,7 @@
     cursoActual = curso;
     localStorage.setItem(COURSE_STORAGE_KEY, cursoActual.id);
     reconstruirEjerciciosPlanos();
+    moduloExpandidoId = ruta.moduleId || null;
     actualizarMarcaCurso();
     pintarSelectorCursos();
     renderSidebar();
@@ -300,12 +303,17 @@
     return false;
   }
 
+  function mostrarLoginParaEjercicio() {
+    if (window.AuthUI) window.AuthUI.abrir();
+  }
+
   // Al iniciar/cerrar sesión: fusiona el progreso local con el de la nube.
   async function sincronizarConRemoto(user) {
     usuarioActual = user;
     if (!user) {
       // Logout: el progreso local queda como "invitado" en este dispositivo.
       renderSidebar();
+      if (ejercicioActual && indiceActual >= 0) abrirEjercicio(indiceActual);
       return;
     }
     let remoto;
@@ -363,6 +371,7 @@
   let ejercicioActual = null;
   let indiceActual = -1;
   let mediaActual = null;  // id de la clase de media abierta ("curso" o moduloId)
+  let moduloExpandidoId = null;
   let quizRespuesta = null;
 
   // --- Inicializa el editor CodeMirror -------------------------------------
@@ -423,22 +432,30 @@
 
     modulos.forEach((modulo) => {
       const completadosModulo = modulo.ejercicios.filter((e) => estado.completados[e.id]).length;
+      const expandido = moduloExpandidoId === modulo.id;
 
       const divMod = document.createElement("div");
       divMod.className = "modulo";
 
       const header = document.createElement("div");
       header.className = "modulo-header";
+      if (expandido) header.classList.add("expanded");
       header.innerHTML = `<span class="emoji">${modulo.emoji}</span> ${modulo.titulo}
         <span class="modulo-progress">${completadosModulo}/${modulo.ejercicios.length}</span>`;
       header.classList.add("clickable");
       header.addEventListener("click", () => {
-        if (cursoActual) setHashSilencioso(hashModulo(slugCurso(cursoActual), modulo.id));
+        moduloExpandidoId = expandido ? null : modulo.id;
+        if (cursoActual) {
+          setHashSilencioso(moduloExpandidoId
+            ? hashModulo(slugCurso(cursoActual), modulo.id)
+            : hashCurso(slugCurso(cursoActual)));
+        }
+        renderSidebar();
       });
       divMod.appendChild(header);
 
       // Clase en video/audio del módulo (si tiene). Libre, no se bloquea.
-      if (modulo.media && (modulo.media.video || modulo.media.audio)) {
+      if (expandido && modulo.media && (modulo.media.video || modulo.media.audio)) {
         const esVideo = !!modulo.media.video;
         const mItem = document.createElement("div");
         mItem.className = "ej-item media-link";
@@ -453,6 +470,7 @@
 
       (modulo.ejercicios || []).forEach((ej) => {
         const idx = globalIndex++;
+        if (!expandido) return;
         const desbloqueado = estaDesbloqueado(idx);
         const completado = !!estado.completados[ej.id];
 
@@ -640,6 +658,7 @@
   function abrirMediaModulo(moduloId) {
     const modulo = modulos.find((m) => m.id === moduloId);
     if (!modulo || !modulo.media) return;
+    moduloExpandidoId = moduloId;
     if (cursoActual) setHashSilencioso(hashModulo(slugCurso(cursoActual), moduloId));
     const items = [];
     if (modulo.media.video) items.push({ kind: "video", src: modulo.media.video, label: `Video · ${modulo.titulo}` });
@@ -663,6 +682,7 @@
     ejercicioActual = ej;
     indiceActual = index;
     mediaActual = null;
+    moduloExpandidoId = ej.moduloId;
     document.body.classList.add("exercise-focus");
     if (cursoActual) setHashSilencioso(hashEjercicio(slugCurso(cursoActual), ej.moduloId, ej.id));
 
@@ -682,10 +702,22 @@
     const tipo = ej.type || "code";
     const esQuiz = tipo.startsWith("quiz");
     const esGuiado = tipo === "guided_steps";
-    $("#quizArea").classList.toggle("hidden", !(esQuiz || esGuiado));
-    $("#exerciseNextRow").classList.toggle("hidden", !(esQuiz || esGuiado));
-    document.querySelector(".editor-zone").classList.toggle("hidden", esQuiz || esGuiado);
+    const bloqueadoPorLogin = !usuarioActual;
+    $("#exerciseLoginGate").classList.toggle("hidden", !bloqueadoPorLogin);
+    $("#quizArea").classList.toggle("hidden", bloqueadoPorLogin || !(esQuiz || esGuiado));
+    $("#exerciseNextRow").classList.toggle("hidden", bloqueadoPorLogin || !(esQuiz || esGuiado));
+    document.querySelector(".editor-zone").classList.toggle("hidden", bloqueadoPorLogin || esQuiz || esGuiado);
+    document.querySelector(".output-zone").classList.toggle("hidden", bloqueadoPorLogin);
     document.querySelector(".output-zone").querySelector("h3").textContent = (esQuiz || esGuiado) ? "Corrección" : "Resultado";
+
+    if (bloqueadoPorLogin) {
+      $("#quizArea").innerHTML = "";
+      outputEl.className = "output";
+      outputEl.textContent = "";
+      renderSidebar();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
     if (esQuiz) {
       pintarQuiz(ej);
@@ -1297,6 +1329,7 @@
     $("#btnReset").addEventListener("click", onReset);
     $("#btnBackToCourse").addEventListener("click", volverAlCurso);
     $("#btnShareExercise").addEventListener("click", compartirEjercicioWsp);
+    $("#btnExerciseLogin").addEventListener("click", mostrarLoginParaEjercicio);
 
     iniciarHeartbeat();
     registrarPwa();

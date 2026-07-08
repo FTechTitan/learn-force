@@ -172,6 +172,9 @@ body {
 }
 .modulo-header.clickable { cursor: pointer; }
 .modulo-header.clickable:hover { color: var(--text); }
+.modulo-header.expanded {
+  color: var(--text); background: var(--bg-card); border-radius: 8px;
+}
 .modulo-header .emoji { font-size: 18px; }
 .modulo-progress { margin-left: auto; font-size: 11px; }
 
@@ -244,9 +247,7 @@ body {
   width: 44px; height: 38px; padding: 0;
 }
 .wsp-icon {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: #25d366; color: #07130a; font-size: 13px; font-weight: 900;
+  width: 22px; height: 22px; color: #25d366; flex: 0 0 auto;
 }
 .share-icon { color: var(--text); font-size: 16px; line-height: 1; }
 .exercise-back:hover,
@@ -282,6 +283,12 @@ body {
   overflow-x: auto; border: 1px solid var(--border);
 }
 .statement pre code { background: none; color: var(--py-blue-light); padding: 0; }
+
+.exercise-login-gate {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px; margin: 12px 0 18px;
+}
+.exercise-login-gate p { margin: 0 0 12px; color: var(--text-dim); }
 
 .hint { margin-bottom: 18px; }
 .hint summary {
