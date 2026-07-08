@@ -27,6 +27,32 @@
 
   reconstruirEjerciciosPlanos();
 
+  function slugCurso(curso) {
+    return curso.id;
+  }
+
+  function hashCurso(courseId) {
+    return `#curso/${encodeURIComponent(courseId)}`;
+  }
+
+  function hashEjercicio(courseId, exerciseId) {
+    return `${hashCurso(courseId)}/ejercicio/${encodeURIComponent(exerciseId)}`;
+  }
+
+  function leerRutaHash() {
+    const parts = window.location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+    if (parts[0] !== "curso" || !parts[1]) return {};
+    return {
+      courseId: decodeURIComponent(parts[1]),
+      exerciseId: parts[2] === "ejercicio" && parts[3] ? decodeURIComponent(parts[3]) : null,
+    };
+  }
+
+  function setHashSilencioso(hash) {
+    if (window.location.hash === hash) return;
+    history.replaceState(null, "", hash || window.location.pathname + window.location.search);
+  }
+
   // --- Estado persistente --------------------------------------------------
   function cargarProgreso() {
     try {
@@ -69,6 +95,7 @@
 
   function mostrarCatalogo() {
     document.body.classList.remove("exercise-focus");
+    setHashSilencioso("");
     cursoActual = null;
     localStorage.removeItem(COURSE_STORAGE_KEY);
     reconstruirEjerciciosPlanos();
@@ -94,6 +121,7 @@
     if (!curso) return;
     document.body.classList.remove("exercise-focus");
     cursoActual = curso;
+    setHashSilencioso(hashCurso(slugCurso(cursoActual)));
     localStorage.setItem(COURSE_STORAGE_KEY, cursoActual.id);
     reconstruirEjerciciosPlanos();
     ejercicioActual = null;
@@ -119,6 +147,25 @@
     actualizarMarcaCurso();
     renderSidebar();
     pintarWelcome();
+    abrirDesdeHash();
+  }
+
+  function abrirDesdeHash() {
+    const ruta = leerRutaHash();
+    if (!ruta.courseId) return;
+    const curso = cursos.find((c) => c.id === ruta.courseId);
+    if (!curso) return;
+    cursoActual = curso;
+    localStorage.setItem(COURSE_STORAGE_KEY, cursoActual.id);
+    reconstruirEjerciciosPlanos();
+    actualizarMarcaCurso();
+    pintarSelectorCursos();
+    renderSidebar();
+    pintarWelcome();
+    if (ruta.exerciseId) {
+      const idx = ejerciciosPlanos.findIndex((e) => e.id === ruta.exerciseId);
+      if (idx >= 0) abrirEjercicio(idx);
+    }
   }
 
   async function cargarCursosRemotos() {
@@ -151,6 +198,13 @@
     debouncersCodigo[exerciseId] = setTimeout(() => {
       pushRemoto(exerciseId, { code });
     }, 1200);
+  }
+
+  function requerirLoginParaValidar() {
+    if (usuarioActual) return true;
+    setOutput("Inicia sesión para comprobar y guardar tu progreso.", "fail");
+    if (window.AuthUI) window.AuthUI.abrir();
+    return false;
   }
 
   // Al iniciar/cerrar sesión: fusiona el progreso local con el de la nube.
@@ -349,7 +403,7 @@
       if (h) h.textContent = "Elige un curso";
       if (p) {
         p.innerHTML = cursos.length
-          ? "Estos cursos vienen desde Supabase y se pueden usar sin iniciar sesión."
+          ? "Estos cursos vienen desde Supabase. Puedes revisar el contenido sin cuenta; para comprobar respuestas se pide login."
           : "Cargando cursos desde Supabase…";
       }
       if (list) {
@@ -389,14 +443,14 @@
         list.innerHTML = `
           <li>📝 Lee el enunciado y escribe tu solución en el editor.</li>
           <li>▶️ Toca <b>Ejecutar</b> para probar tu código.</li>
-          <li>✅ Toca <b>Comprobar</b> para validar tu respuesta.</li>
-          <li>🔓 Al completar ejercicios se desbloquean los siguientes.</li>`;
+          <li>✅ Inicia sesión para <b>Comprobar</b> y guardar progreso.</li>
+          <li>📚 Puedes abrir cualquier ejercicio del curso.</li>`;
       } else {
         list.innerHTML = `
           <li>✅ Responde verdadero/falso, alternativas o ejercicios paso a paso.</li>
+          <li>🔑 Inicia sesión para comprobar y guardar tu avance.</li>
           <li>📌 Revisa la explicación inmediata después de comprobar.</li>
-          <li>🔓 Al responder correctamente se desbloquea la siguiente pregunta.</li>
-          <li>📈 Usa el progreso para repetir solo donde fallaste.</li>`;
+          <li>📚 Puedes abrir cualquier pregunta del curso.</li>`;
       }
     }
     if (pyStatus) {
@@ -509,6 +563,7 @@
     indiceActual = index;
     mediaActual = null;
     document.body.classList.add("exercise-focus");
+    if (cursoActual) setHashSilencioso(hashEjercicio(slugCurso(cursoActual), ej.id));
 
     welcome.classList.add("hidden");
     mediaPanel.classList.add("hidden");
@@ -560,6 +615,7 @@
     indiceActual = -1;
     mediaActual = null;
     quizRespuesta = null;
+    if (cursoActual) setHashSilencioso(hashCurso(slugCurso(cursoActual)));
     exercise.classList.add("hidden");
     mediaPanel.classList.add("hidden");
     welcome.classList.remove("hidden");
@@ -581,7 +637,8 @@
             <span>${escaparHtml(op.label)}</span>
           </button>
         `).join("")}
-      </div>`;
+      </div>
+      <button type="button" class="btn btn-primary btn-sm quiz-check" id="btnQuizCheck">Comprobar respuesta</button>`;
     area.querySelectorAll(".quiz-option").forEach((btn) => {
       btn.addEventListener("click", () => {
         quizRespuesta = btn.getAttribute("data-answer");
@@ -589,6 +646,7 @@
         btn.classList.add("selected");
       });
     });
+    $("#btnQuizCheck").addEventListener("click", comprobarQuiz);
   }
 
   function estadoPasos(ej) {
@@ -685,6 +743,7 @@
   }
 
   function comprobarPasoGuiado(i) {
+    if (!requerirLoginParaValidar()) return;
     const ej = ejercicioActual;
     const paso = (ej.steps || [])[i];
     if (!paso) return;
@@ -843,6 +902,7 @@
       setOutput("Completa el paso activo usando el botón «Comprobar paso».", "");
       return;
     }
+    if (!requerirLoginParaValidar()) return;
     guardarCodigoActual();
     await asegurarPython();
     const codigo = editor.getValue();
@@ -887,6 +947,7 @@
   }
 
   function comprobarQuiz() {
+    if (!requerirLoginParaValidar()) return;
     const ej = ejercicioActual;
     if (!quizRespuesta) {
       setOutput('<span class="fail-line">Elige una respuesta antes de comprobar.</span>', "fail");
