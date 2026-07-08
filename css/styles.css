@@ -79,6 +79,9 @@ body {
 /* ---------- Auth area (topbar) ---------- */
 .auth-area { display: flex; align-items: center; }
 .btn-sm { padding: 6px 14px; font-size: 13px; }
+.notify-btn.enabled {
+  color: #08130a; background: var(--green); border-color: transparent;
+}
 .user-chip {
   display: flex; align-items: center; gap: 10px;
   background: var(--bg-card); border: 1px solid var(--border);

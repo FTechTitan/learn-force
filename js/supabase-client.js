@@ -97,6 +97,34 @@ const ProgresoRemoto = {
 };
 
 // ---------------------------------------------------------------------------
+//  Web Push subscriptions (PWA)
+// ---------------------------------------------------------------------------
+const PushSubscriptions = {
+  async guardar(userId, subscription) {
+    const json = subscription.toJSON();
+    const fila = {
+      user_id: userId,
+      endpoint: json.endpoint,
+      p256dh: json.keys?.p256dh,
+      auth: json.keys?.auth,
+      user_agent: navigator.userAgent,
+    };
+    const { error } = await sb
+      .from("push_subscriptions")
+      .upsert(fila, { onConflict: "endpoint" });
+    if (error) throw error;
+  },
+
+  async enviar({ title, body, url }) {
+    const { data, error } = await sb.functions.invoke("send-push", {
+      body: { title, body, url },
+    });
+    if (error) throw error;
+    return data;
+  },
+};
+
+// ---------------------------------------------------------------------------
 //  Cursos remotos configurables desde Supabase
 // ---------------------------------------------------------------------------
 function normalizarCurso(row) {
@@ -190,4 +218,5 @@ const CursosRemotos = {
 
 window.Auth = Auth;
 window.ProgresoRemoto = ProgresoRemoto;
+window.PushSubscriptions = PushSubscriptions;
 window.CursosRemotos = CursosRemotos;

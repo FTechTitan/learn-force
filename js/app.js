@@ -10,9 +10,11 @@
 
   const STORAGE_KEY = "progra-uai-progreso-v1";
   const COURSE_STORAGE_KEY = "progra-uai-curso-activo-v1";
+  const VAPID_PUBLIC_KEY = "BNCz7TMy0I4UmeS2JVnqrCzxqryUvP41NKb8aMUbkVXoZVnqS0M51vs2l59SheD03lRCy1IPYI_SW5gPSC8wqQ8";
   let cursos = [];
   let cursoActual = null;
   let modulos = [];
+  let swRegistration = null;
 
   // Lista plana de ejercicios en orden, con referencia a su módulo.
   let ejerciciosPlanos = [];
@@ -62,6 +64,83 @@
   function setHashSilencioso(hash) {
     if (window.location.hash === hash) return;
     history.replaceState(null, "", hash || window.location.pathname + window.location.search);
+  }
+
+  async function registrarPwa() {
+    const notifyBtn = $("#btnNotifications");
+
+    if ("serviceWorker" in navigator) {
+      try {
+        swRegistration = await navigator.serviceWorker.register("/sw.js");
+      } catch (e) {
+        console.warn("No se pudo registrar el service worker", e);
+      }
+    }
+
+    if (!notifyBtn || !("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    notifyBtn.classList.remove("hidden");
+    actualizarBotonNotificaciones();
+    notifyBtn.addEventListener("click", activarNotificaciones);
+    if ("Notification" in window && Notification.permission === "granted") {
+      guardarPushSubscription().catch((e) => console.warn("No se pudo guardar push subscription:", e.message || e));
+    }
+  }
+
+  function actualizarBotonNotificaciones() {
+    const notifyBtn = $("#btnNotifications");
+    if (!notifyBtn || !("Notification" in window)) return;
+    const activas = Notification.permission === "granted";
+    notifyBtn.classList.toggle("enabled", activas);
+    notifyBtn.textContent = activas ? "Notificaciones activas" : "Activar notificaciones";
+    notifyBtn.disabled = Notification.permission === "denied";
+    if (Notification.permission === "denied") notifyBtn.textContent = "Notificaciones bloqueadas";
+  }
+
+  async function activarNotificaciones() {
+    if (!("Notification" in window)) return;
+    if (!usuarioActual) {
+      if (window.AuthUI) window.AuthUI.abrir();
+      mostrarToast("Inicia sesión para activar notificaciones.");
+      return;
+    }
+    const permiso = Notification.permission === "default"
+      ? await Notification.requestPermission()
+      : Notification.permission;
+    actualizarBotonNotificaciones();
+    if (permiso === "granted") {
+      await guardarPushSubscription();
+      await enviarPush("TechForce Learn", "Listo. Te avisaré incluso si la app está cerrada.", window.location.href);
+    }
+  }
+
+  function vapidKeyToUint8Array(base64Url) {
+    const padding = "=".repeat((4 - base64Url.length % 4) % 4);
+    const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
+  }
+
+  async function guardarPushSubscription() {
+    if (!usuarioActual || !window.PushSubscriptions || Notification.permission !== "granted") return;
+    const registration = swRegistration || await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKeyToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    await window.PushSubscriptions.guardar(usuarioActual.id, subscription);
+  }
+
+  async function enviarPush(title, body, url) {
+    if (!usuarioActual || !window.PushSubscriptions || Notification.permission !== "granted") return;
+    try {
+      await guardarPushSubscription();
+      await window.PushSubscriptions.enviar({ title, body, url });
+    } catch (e) {
+      console.warn("No se pudo enviar push:", e.message || e);
+    }
   }
 
   // --- Estado persistente --------------------------------------------------
@@ -256,6 +335,9 @@
     });
 
     renderSidebar();
+    if ("Notification" in window && Notification.permission === "granted") {
+      guardarPushSubscription().catch((e) => console.warn("No se pudo guardar push subscription:", e.message || e));
+    }
     // Si hay un ejercicio abierto, refresca su editor con el código fusionado.
     if (ejercicioActual && indiceActual >= 0) abrirEjercicio(indiceActual);
   }
@@ -1019,6 +1101,11 @@
 
     if (eraNuevo) {
       mostrarToast("🎉 ¡Ejercicio completado!");
+      enviarPush(
+        "Ejercicio completado",
+        `Avanzaste en ${cursoActual?.titulo || "tu curso"}.`,
+        urlEjercicioActual()
+      );
     }
   }
 
@@ -1211,6 +1298,7 @@
     $("#btnShareExercise").addEventListener("click", compartirEjercicioWsp);
 
     iniciarHeartbeat();
+    registrarPwa();
     precargarPython();
   }
 

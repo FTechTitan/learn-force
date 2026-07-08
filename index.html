@@ -3,8 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Python de a poco · progra-UAI</title>
-  <meta name="description" content="Aprende Python paso a paso con ejercicios de menos a más, corregidos automáticamente en tu navegador." />
+  <title>TechForce Learn</title>
+  <meta name="description" content="Cursos configurables con ejercicios, alternativas, verdadero/falso y actividades paso a paso." />
+  <meta name="theme-color" content="#171a23" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Learn" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/assets/pwa/favicon-64.png" />
+  <link rel="apple-touch-icon" href="/assets/pwa/icon-192.png" />
 
   <!-- CodeMirror 5 (editor de código) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
@@ -15,10 +21,10 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="logo">🐍</span>
+      <span class="logo">📚</span>
       <div>
-        <h1 id="brandTitle">Python de a poco</h1>
-        <p class="subtitle" id="brandSubtitle">Aprende programando · curso UAI</p>
+        <h1 id="brandTitle">TechForce Learn</h1>
+        <p class="subtitle" id="brandSubtitle">Selecciona un curso para comenzar</p>
       </div>
     </div>
     <div class="topbar-right">
@@ -30,6 +36,7 @@
         <div class="bar"><div class="bar-fill" id="progresoGlobal"></div></div>
         <span id="progresoTexto">0 / 0</span>
       </div>
+      <button class="btn btn-secondary btn-sm notify-btn hidden" id="btnNotifications" type="button">Activar notificaciones</button>
       <div class="auth-area" id="authArea">
         <button class="btn btn-secondary btn-sm" id="btnLogin">Entrar / Registrarse</button>
         <div class="user-chip hidden" id="userChip">
