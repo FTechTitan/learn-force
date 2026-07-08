@@ -821,6 +821,9 @@ textarea.guided-input { resize: vertical; min-height: 72px; }
 @keyframes micPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.5); } 50% { box-shadow: 0 0 0 6px rgba(229,72,77,0); } }
 
 @media (max-width: 760px) {
+  body.catalog-mode .course-select-wrap {
+    display: none;
+  }
   .ai-fab-text { display: none; }
   .ai-panel {
     bottom: 76px; right: 10px; left: 10px;

@@ -175,6 +175,7 @@
     const title = $("#brandTitle");
     const subtitle = $("#brandSubtitle");
     const logo = document.querySelector(".logo");
+    document.body.classList.toggle("catalog-mode", !cursoActual);
     if (title) title.textContent = cursoActual ? cursoActual.titulo : "Cursos";
     if (subtitle) {
       subtitle.textContent = cursoActual
