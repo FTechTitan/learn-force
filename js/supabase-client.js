@@ -8,6 +8,8 @@
 
 const SUPABASE_URL = "https://bipsvhxsvfzfwzufucfg.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nsfpKRfcdisP31bYOAumeg_DimCZ5tC";
+const AUTH_REDIRECT_STORAGE_KEY = "techforce-learn-post-login-url";
+const CANONICAL_URL = "https://learn.techforce.cl";
 
 // `supabase` es el global que expone el UMD de @supabase/supabase-js (CDN).
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -19,7 +21,14 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, 
 // ---------------------------------------------------------------------------
 const Auth = {
   cliente: sb,
-  redirectUrl: "https://learn.techforce.cl",
+
+  redirectUrl() {
+    const url = new URL(window.location.href);
+    const canonical = new URL(CANONICAL_URL);
+    url.protocol = canonical.protocol;
+    url.host = canonical.host;
+    return url.toString();
+  },
 
   async usuarioActual() {
     const { data } = await sb.auth.getUser();
@@ -40,10 +49,12 @@ const Auth = {
   },
 
   async entrarConGoogle() {
+    const redirectTo = Auth.redirectUrl();
+    localStorage.setItem(AUTH_REDIRECT_STORAGE_KEY, redirectTo);
     const { data, error } = await sb.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: Auth.redirectUrl,
+        redirectTo,
         skipBrowserRedirect: true,
       },
     });
@@ -59,7 +70,24 @@ const Auth = {
 
   // Notifica cambios de sesión (login / logout / refresh).
   onCambio(callback) {
-    sb.auth.onAuthStateChange((_event, session) => callback(session?.user || null));
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        const pending = localStorage.getItem(AUTH_REDIRECT_STORAGE_KEY);
+        if (pending) {
+          localStorage.removeItem(AUTH_REDIRECT_STORAGE_KEY);
+          try {
+            const target = new URL(pending);
+            if (target.origin === CANONICAL_URL && target.href !== window.location.href) {
+              window.location.replace(target.href);
+              return;
+            }
+          } catch (_) {
+            // Si algo guardado no era URL válida, se ignora.
+          }
+        }
+      }
+      callback(session?.user || null);
+    });
   },
 };
 
