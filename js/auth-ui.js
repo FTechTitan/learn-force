@@ -70,17 +70,16 @@
       // onCambio dispara notificar(null)
     });
 
-    googleBtn.addEventListener("click", async () => {
+    googleBtn.addEventListener("click", () => {
       errorEl.classList.add("hidden");
       googleBtn.disabled = true;
-      const textoPrevio = googleBtn.querySelector("span:last-child").textContent;
       googleBtn.querySelector("span:last-child").textContent = "Redirigiendo…";
       try {
-        await window.Auth.entrarConGoogle();
+        window.Auth.entrarConGoogle();
       } catch (err) {
         mostrarError(traducirError(err));
         googleBtn.disabled = false;
-        googleBtn.querySelector("span:last-child").textContent = textoPrevio;
+        googleBtn.querySelector("span:last-child").textContent = "Continuar con Google";
       }
     });
 

@@ -48,20 +48,13 @@ const Auth = {
     return data.user;
   },
 
-  async entrarConGoogle() {
+  entrarConGoogle() {
     const redirectTo = Auth.redirectUrl();
     localStorage.setItem(AUTH_REDIRECT_STORAGE_KEY, redirectTo);
-    const { data, error } = await sb.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
-    });
-    if (error) throw error;
-    if (data?.url) window.location.assign(data.url);
-    else throw new Error("Google no devolvió una URL de inicio de sesión.");
-    return data;
+    const authUrl = new URL(`${SUPABASE_URL}/auth/v1/authorize`);
+    authUrl.searchParams.set("provider", "google");
+    authUrl.searchParams.set("redirect_to", redirectTo);
+    window.location.href = authUrl.toString();
   },
 
   async salir() {
