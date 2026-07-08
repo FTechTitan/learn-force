@@ -35,16 +35,27 @@
     return `#curso/${encodeURIComponent(courseId)}`;
   }
 
-  function hashEjercicio(courseId, exerciseId) {
-    return `${hashCurso(courseId)}/ejercicio/${encodeURIComponent(exerciseId)}`;
+  function hashModulo(courseId, moduleId) {
+    return `${hashCurso(courseId)}/${encodeURIComponent(moduleId)}`;
+  }
+
+  function hashEjercicio(courseId, moduleId, exerciseId) {
+    return `${hashModulo(courseId, moduleId)}/${encodeURIComponent(exerciseId)}`;
   }
 
   function leerRutaHash() {
     const parts = window.location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] !== "curso" || !parts[1]) return {};
+    const moduleId = parts[2] && parts[2] !== "ejercicio" ? decodeURIComponent(parts[2]) : null;
+    const exerciseId = parts[2] === "ejercicio" && parts[3]
+      ? decodeURIComponent(parts[3])
+      : parts[2] && parts[2] !== "ejercicio" && parts[3]
+      ? decodeURIComponent(parts[3])
+      : null;
     return {
       courseId: decodeURIComponent(parts[1]),
-      exerciseId: parts[2] === "ejercicio" && parts[3] ? decodeURIComponent(parts[3]) : null,
+      moduleId,
+      exerciseId,
     };
   }
 
@@ -163,7 +174,9 @@
     renderSidebar();
     pintarWelcome();
     if (ruta.exerciseId) {
-      const idx = ejerciciosPlanos.findIndex((e) => e.id === ruta.exerciseId);
+      const idx = ejerciciosPlanos.findIndex((e) =>
+        e.id === ruta.exerciseId && (!ruta.moduleId || e.moduloId === ruta.moduleId)
+      );
       if (idx >= 0) abrirEjercicio(idx);
     }
   }
@@ -540,6 +553,7 @@
   function abrirMediaModulo(moduloId) {
     const modulo = modulos.find((m) => m.id === moduloId);
     if (!modulo || !modulo.media) return;
+    if (cursoActual) setHashSilencioso(hashModulo(slugCurso(cursoActual), moduloId));
     const items = [];
     if (modulo.media.video) items.push({ kind: "video", src: modulo.media.video, label: `Video · ${modulo.titulo}` });
     if (modulo.media.audio) items.push({ kind: "audio", src: modulo.media.audio, label: `Audio · ${modulo.titulo}` });
@@ -563,7 +577,7 @@
     indiceActual = index;
     mediaActual = null;
     document.body.classList.add("exercise-focus");
-    if (cursoActual) setHashSilencioso(hashEjercicio(slugCurso(cursoActual), ej.id));
+    if (cursoActual) setHashSilencioso(hashEjercicio(slugCurso(cursoActual), ej.moduloId, ej.id));
 
     welcome.classList.add("hidden");
     mediaPanel.classList.add("hidden");
