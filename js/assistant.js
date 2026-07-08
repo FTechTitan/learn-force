@@ -87,7 +87,7 @@
     // Requiere sesión iniciada (la función rechaza anónimos).
     const user = await window.Auth.usuarioActual();
     if (!user) {
-      agregarMensaje("error", "Para usar el asistente necesitás <b>iniciar sesión</b>. Abrí “Entrar / Registrarse” arriba a la derecha. 🙂");
+      agregarMensaje("error", "Para usar el asistente necesitás <b>iniciar sesión</b>. Abrí “Entrar con Google” arriba a la derecha. 🙂");
       if (window.AuthUI) window.AuthUI.abrir();
       return;
     }

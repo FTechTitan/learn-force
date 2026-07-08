@@ -38,7 +38,7 @@
       </div>
       <button class="btn btn-secondary btn-sm notify-btn hidden" id="btnNotifications" type="button">Activar notificaciones</button>
       <div class="auth-area" id="authArea">
-        <button class="btn btn-secondary btn-sm" id="btnLogin">Entrar / Registrarse</button>
+        <button class="btn btn-secondary btn-sm" id="btnLogin">Entrar con Google</button>
         <div class="user-chip hidden" id="userChip">
           <span class="user-email" id="userEmail"></span>
           <button class="btn-mini" id="btnLogout">Salir</button>
@@ -51,28 +51,13 @@
   <div class="modal-overlay hidden" id="authModal">
     <div class="modal">
       <button class="modal-close" id="authClose" aria-label="Cerrar">✕</button>
-      <h2 id="authTitulo">Entrá a tu cuenta</h2>
-      <p class="modal-sub">Guardá tu progreso y seguilo desde cualquier dispositivo.</p>
-      <form id="authForm">
-        <label>Email
-          <input type="email" id="authEmail" autocomplete="email" required placeholder="tu@email.com" />
-        </label>
-        <label>Contraseña
-          <input type="password" id="authPassword" autocomplete="current-password" required minlength="6" placeholder="mínimo 6 caracteres" />
-        </label>
-        <p class="auth-error hidden" id="authError"></p>
-        <button type="submit" class="btn btn-primary btn-block" id="authSubmit">Entrar</button>
-      </form>
-      <div class="auth-divider"><span>o</span></div>
+      <h2 id="authTitulo">Entrá con Google</h2>
+      <p class="modal-sub">Usa tu cuenta Google para responder ejercicios y guardar tu avance.</p>
+      <p class="auth-error hidden" id="authError"></p>
       <button type="button" class="btn-google" id="btnGoogleLogin">
         <span class="google-mark">G</span>
         <span>Continuar con Google</span>
       </button>
-      <p class="auth-toggle">
-        <span id="authToggleText">¿No tenés cuenta?</span>
-        <a href="#" id="authToggle">Registrate</a>
-      </p>
-      <p class="auth-skip"><a href="#" id="authSkip">Seguir sin cuenta (solo en este dispositivo)</a></p>
     </div>
   </div>
 
