@@ -100,7 +100,10 @@
       </div>
 
       <div class="exercise hidden" id="exercise">
-        <button type="button" class="exercise-back" id="btnBackToCourse">← Curso</button>
+        <div class="exercise-nav">
+          <button type="button" class="exercise-back" id="btnBackToCourse">← Curso</button>
+          <button type="button" class="exercise-share" id="btnShareExercise">Compartir por WhatsApp</button>
+        </div>
         <div class="exercise-header">
           <div>
             <span class="badge" id="exModulo"></span>
@@ -112,6 +115,9 @@
         <div class="exercise-body">
           <div class="statement" id="exEnunciado"></div>
           <div class="quiz-area hidden" id="quizArea"></div>
+          <div class="exercise-next-row hidden" id="exerciseNextRow">
+            <button class="btn btn-ghost" id="btnNextInline" disabled>Siguiente ejercicio →</button>
+          </div>
           <details class="hint">
             <summary>💡 Pista</summary>
             <p id="exPista"></p>
@@ -161,15 +167,15 @@
 
   <div class="ai-panel hidden" id="aiPanel">
     <div class="ai-header">
-      <div class="ai-title">🤖 Tutor de Python</div>
+      <div class="ai-title" id="aiTitle">🤖 Tutor del curso</div>
       <div class="ai-head-btns">
         <button class="ai-close" id="aiMin" aria-label="Minimizar" title="Minimizar">—</button>
-        <button class="ai-close" id="aiClose" aria-label="Cerrar">✕</button>
+        <button class="ai-close ai-close-main" id="aiClose" aria-label="Cerrar" title="Cerrar">✕</button>
       </div>
     </div>
     <div class="ai-messages" id="aiMessages">
       <div class="ai-msg bot">
-        ¡Hola! 👋 Soy tu tutor. Preguntame lo que quieras de Python o del ejercicio
+        ¡Hola! 👋 Soy tu tutor. Preguntame lo que quieras del curso o del ejercicio
         en el que estés. Te ayudo con <b>pistas</b> para que aprendas, sin darte todo
         masticado. 😉
       </div>

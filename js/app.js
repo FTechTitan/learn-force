@@ -348,6 +348,10 @@
       header.className = "modulo-header";
       header.innerHTML = `<span class="emoji">${modulo.emoji}</span> ${modulo.titulo}
         <span class="modulo-progress">${completadosModulo}/${modulo.ejercicios.length}</span>`;
+      header.classList.add("clickable");
+      header.addEventListener("click", () => {
+        if (cursoActual) setHashSilencioso(hashModulo(slugCurso(cursoActual), modulo.id));
+      });
       divMod.appendChild(header);
 
       // Clase en video/audio del módulo (si tiene). Libre, no se bloquea.
@@ -586,7 +590,9 @@
     $("#exModulo").textContent = ej.moduloTitulo;
     $("#exNivel").textContent = "Nivel " + (ej.nivel || 1);
     $("#exTitulo").textContent = ej.titulo;
-    $("#exEnunciado").innerHTML = ej.enunciado;
+    $("#exEnunciado").innerHTML = `
+      <span class="statement-label">Instrucciones:</span>
+      <div class="statement-body">${ej.enunciado || ""}</div>`;
     $("#exPista").textContent = ej.pista || "Pensá el problema paso a paso.";
     quizRespuesta = null;
 
@@ -594,6 +600,7 @@
     const esQuiz = tipo.startsWith("quiz");
     const esGuiado = tipo === "guided_steps";
     $("#quizArea").classList.toggle("hidden", !(esQuiz || esGuiado));
+    $("#exerciseNextRow").classList.toggle("hidden", !(esQuiz || esGuiado));
     document.querySelector(".editor-zone").classList.toggle("hidden", esQuiz || esGuiado);
     document.querySelector(".output-zone").querySelector("h3").textContent = (esQuiz || esGuiado) ? "Corrección" : "Resultado";
 
@@ -618,6 +625,7 @@
       : "Tocá «Ejecutar» o «Comprobar» para ver la salida.";
 
     $("#btnNext").disabled = indiceActual >= ejerciciosPlanos.length - 1;
+    $("#btnNextInline").disabled = indiceActual >= ejerciciosPlanos.length - 1;
 
     renderSidebar();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -636,6 +644,19 @@
     pintarWelcome();
     renderSidebar();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function urlEjercicioActual() {
+    if (!cursoActual || !ejercicioActual) return window.location.href;
+    const hash = hashEjercicio(slugCurso(cursoActual), ejercicioActual.moduloId, ejercicioActual.id);
+    return `${window.location.origin}${window.location.pathname}${hash}`;
+  }
+
+  function compartirEjercicioWsp() {
+    if (!cursoActual || !ejercicioActual) return;
+    const url = urlEjercicioActual();
+    const texto = `Mira este ejercicio de ${cursoActual.titulo}: ${ejercicioActual.titulo}\n${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
   }
 
   function pintarQuiz(ej) {
@@ -705,7 +726,8 @@
         <div class="guided-head">
           <span class="guided-index">${correcto ? "✓" : i + 1}</span>
           <div>
-            <h3>${escaparHtml(paso.title || `Paso ${i + 1}`)}</h3>
+            <span class="guided-step-kicker">Paso ${i + 1}:</span>
+            <h3>${escaparHtml(paso.title || "Resolver esta parte")}</h3>
             ${bloqueado ? '<p class="guided-status">Completa el paso anterior para desbloquear.</p>' : ""}
           </div>
         </div>
@@ -993,6 +1015,7 @@
     pushRemoto(ej.id, payload);
     renderSidebar();
     $("#btnNext").disabled = indiceActual >= ejerciciosPlanos.length - 1;
+    $("#btnNextInline").disabled = indiceActual >= ejerciciosPlanos.length - 1;
 
     if (eraNuevo) {
       mostrarToast("🎉 ¡Ejercicio completado!");
@@ -1182,8 +1205,10 @@
     $("#btnRun").addEventListener("click", onRun);
     $("#btnCheck").addEventListener("click", onCheck);
     $("#btnNext").addEventListener("click", onNext);
+    $("#btnNextInline").addEventListener("click", onNext);
     $("#btnReset").addEventListener("click", onReset);
     $("#btnBackToCourse").addEventListener("click", volverAlCurso);
+    $("#btnShareExercise").addEventListener("click", compartirEjercicioWsp);
 
     iniciarHeartbeat();
     precargarPython();
