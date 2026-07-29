@@ -72,7 +72,7 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-lazy-drive");
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-drive-classes");
         let refrescadoPorSw = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refrescadoPorSw) return;
@@ -722,41 +722,61 @@
       .filter((it) => it.embed);
     if (!embeds.length) return;
 
+    embeds.forEach(({ link }) => {
+      const item = link.closest("li");
+      if (item) item.classList.add("media-source-link");
+    });
+    cont.querySelectorAll("ul").forEach((list) => {
+      const children = [...list.children];
+      if (children.length && children.every((child) => child.classList.contains("media-source-link"))) {
+        list.classList.add("media-source-list");
+      }
+    });
+
     const section = document.createElement("section");
     section.className = "drive-embeds";
     section.innerHTML = `
       <div class="drive-embeds-title">
-        <h3>Videos y recursos embebidos</h3>
-        <span>Cargan uno por uno para no pegar la pagina.</span>
+        <h3>Clases en video</h3>
+        <span>${embeds.length} ${embeds.length === 1 ? "clase" : "clases"} disponibles</span>
+      </div>
+      <div class="media-playlist">
+        <div class="media-player-shell">
+          <p>Selecciona una clase para cargar el video.</p>
+        </div>
+        <ol class="media-class-list"></ol>
       </div>`;
+
+    const list = section.querySelector(".media-class-list");
 
     embeds.forEach(({ link, embed }, i) => {
       const title = link.textContent || `Recurso ${embed.provider} ${i + 1}`;
-      const card = document.createElement("article");
-      card.className = `drive-embed-card drive-embed-${embed.kind}`;
-      card.innerHTML = `
-        <div class="drive-embed-head">
-          <span>${escaparHtml(title)}</span>
-          <a href="${link.href}" target="_blank" rel="noopener">Abrir en ${embed.provider}</a>
-        </div>
-        <div class="drive-embed-placeholder">
+      const item = document.createElement("li");
+      item.className = `media-class-row media-class-${embed.kind}`;
+      item.innerHTML = `
+        <div class="media-class-main">
           <button
             type="button"
-            class="btn btn-primary btn-sm"
+            class="media-class-button"
             data-embed-src="${embed.src}"
             data-embed-title="${escaparHtml(title)}">
-            ${embed.action}
+            <span class="media-class-number">Clase ${i + 1}</span>
+            <span class="media-class-title">${escaparHtml(title)}</span>
+            <span class="media-class-provider">${embed.provider}</span>
           </button>
+          <a href="${link.href}" target="_blank" rel="noopener">Abrir</a>
         </div>`;
-      section.appendChild(card);
+      list.appendChild(item);
     });
 
     section.addEventListener("click", (ev) => {
       const btn = ev.target.closest("[data-embed-src]");
       if (!btn) return;
-      const holder = btn.closest(".drive-embed-placeholder");
-      if (!holder) return;
+      const holder = section.querySelector(".media-player-shell");
+      section.querySelectorAll(".media-class-button").forEach((button) => button.classList.remove("active"));
+      btn.classList.add("active");
       holder.innerHTML = `
+        <div class="media-player-title">${escaparHtml(btn.getAttribute("data-embed-title") || "Clase en video")}</div>
         <iframe
           title="${escaparHtml(btn.getAttribute("data-embed-title") || "Recurso embebido")}"
           src="${btn.getAttribute("data-embed-src")}"
