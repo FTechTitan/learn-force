@@ -42,6 +42,10 @@
     return `${hashCurso(courseId)}/${encodeURIComponent(moduleId)}`;
   }
 
+  function hashClase(courseId, moduleId, classId) {
+    return `${hashModulo(courseId, moduleId)}/clase/${encodeURIComponent(classId)}`;
+  }
+
   function hashEjercicio(courseId, moduleId, exerciseId) {
     return `${hashModulo(courseId, moduleId)}/${encodeURIComponent(exerciseId)}`;
   }
@@ -50,7 +54,10 @@
     const parts = window.location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] !== "curso" || !parts[1]) return {};
     const moduleId = parts[2] && parts[2] !== "ejercicio" ? decodeURIComponent(parts[2]) : null;
-    const exerciseId = parts[2] === "ejercicio" && parts[3]
+    const classId = parts[3] === "clase" && parts[4] ? decodeURIComponent(parts[4]) : null;
+    const exerciseId = classId
+      ? null
+      : parts[2] === "ejercicio" && parts[3]
       ? decodeURIComponent(parts[3])
       : parts[2] && parts[2] !== "ejercicio" && parts[3]
       ? decodeURIComponent(parts[3])
@@ -58,6 +65,7 @@
     return {
       courseId: decodeURIComponent(parts[1]),
       moduleId,
+      classId,
       exerciseId,
     };
   }
@@ -72,7 +80,7 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-drive-classes");
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-video-classes-only");
         let refrescadoPorSw = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refrescadoPorSw) return;
@@ -283,6 +291,10 @@
     pintarSelectorCursos();
     renderSidebar();
     pintarWelcome();
+    if (ruta.classId && ruta.moduleId) {
+      abrirClaseMedia(ruta.moduleId, ruta.classId);
+      return;
+    }
     if (ruta.exerciseId) {
       const idx = ejerciciosPlanos.findIndex((e) =>
         e.id === ruta.exerciseId && (!ruta.moduleId || e.moduloId === ruta.moduleId)
@@ -459,6 +471,7 @@
 
     modulos.forEach((modulo) => {
       const completadosModulo = modulo.ejercicios.filter((e) => estado.completados[e.id]).length;
+      const clasesModulo = clasesMediaModulo(modulo);
       const expandido = moduloExpandidoId === modulo.id;
 
       const divMod = document.createElement("div");
@@ -467,8 +480,9 @@
       const header = document.createElement("div");
       header.className = "modulo-header";
       if (expandido) header.classList.add("expanded");
+      const totalModulo = clasesModulo.length || modulo.ejercicios.length;
       header.innerHTML = `<span class="emoji">${modulo.emoji}</span> ${modulo.titulo}
-        <span class="modulo-progress">${completadosModulo}/${modulo.ejercicios.length}</span>`;
+        <span class="modulo-progress">${clasesModulo.length ? `${clasesModulo.length} clases` : `${completadosModulo}/${totalModulo}`}</span>`;
       header.classList.add("clickable");
       header.addEventListener("click", () => {
         moduloExpandidoId = expandido ? null : modulo.id;
@@ -481,8 +495,8 @@
       });
       divMod.appendChild(header);
 
-      // Contenido del módulo: teoría, recursos externos Drive y media directa si existe.
-      if (expandido && (modulo.teoria || modulo.intro || (modulo.media && (modulo.media.video || modulo.media.audio)))) {
+      // Contenido del módulo: teoría, recursos externos y media directa si existe.
+      if (expandido && !clasesModulo.length && (modulo.teoria || modulo.intro || (modulo.media && (modulo.media.video || modulo.media.audio)))) {
         const tieneMediaDirecta = !!(modulo.media && (modulo.media.video || modulo.media.audio));
         const mItem = document.createElement("div");
         mItem.className = "ej-item media-link";
@@ -495,7 +509,21 @@
         divMod.appendChild(mItem);
       }
 
-      (modulo.ejercicios || []).forEach((ej) => {
+      if (expandido && clasesModulo.length) {
+        clasesModulo.forEach((clase) => {
+          const cItem = document.createElement("div");
+          cItem.className = "ej-item media-link class-link";
+          if (mediaActual === `${modulo.id}:${clase.id}`) cItem.classList.add("activo");
+          cItem.innerHTML = `
+            <span class="estado">▶️</span>
+            <span class="nombre">${escaparHtml(clase.titulo)}</span>
+            <span class="nivel-dots">Clase ${clase.numero}</span>`;
+          cItem.addEventListener("click", () => abrirClaseMedia(modulo.id, clase.id));
+          divMod.appendChild(cItem);
+        });
+      }
+
+      (!clasesModulo.length ? (modulo.ejercicios || []) : []).forEach((ej) => {
         const idx = globalIndex++;
         if (!expandido) return;
         const desbloqueado = estaDesbloqueado(idx);
@@ -528,16 +556,22 @@
   }
 
   function actualizarProgresoGlobal() {
-    const total = ejerciciosPlanos.length;
+    const totalClases = modulos.reduce((sum, modulo) => sum + clasesMediaModulo(modulo).length, 0);
+    const total = totalClases || ejerciciosPlanos.length;
     const hechos = ejerciciosPlanos.filter((e) => estado.completados[e.id]).length;
     const pct = total ? Math.round((hechos / total) * 100) : 0;
     $("#progresoGlobal").style.width = pct + "%";
-    $("#progresoTexto").textContent = `${hechos} / ${total}`;
+    $("#progresoTexto").textContent = totalClases ? `${totalClases} clases` : `${hechos} / ${total}`;
   }
 
   function cursoTieneCodigo() {
     if (!cursoActual) return false;
     return ejerciciosPlanos.some((e) => (e.type || "code") === "code");
+  }
+
+  function cursoTieneClasesVideo() {
+    if (!cursoActual) return false;
+    return modulos.some((modulo) => clasesMediaModulo(modulo).length);
   }
 
   function pintarWelcome() {
@@ -572,7 +606,7 @@
       }
       if (pyStatus) {
         pyStatus.textContent = cursos.length
-          ? "Selecciona un curso para ver módulos y ejercicios."
+          ? "Selecciona un curso para ver sus módulos."
           : "Inicia sesión para cargar el catálogo.";
         pyStatus.style.background = "var(--bg-card)";
       }
@@ -584,7 +618,12 @@
       p.innerHTML = cursoActual.descripcion || "Elige un módulo de la izquierda para empezar.";
     }
     if (list) {
-      if (cursoTieneCodigo()) {
+      if (cursoTieneClasesVideo()) {
+        list.innerHTML = `
+          <li>▶️ Abre un módulo y elige una clase.</li>
+          <li>🎬 Cada clase carga un video individual.</li>
+          <li>📚 Los videos quedan ordenados por módulo.</li>`;
+      } else if (cursoTieneCodigo()) {
         list.innerHTML = `
           <li>📝 Lee el enunciado y escribe tu solución en el editor.</li>
           <li>▶️ Toca <b>Ejecutar</b> para probar tu código.</li>
@@ -599,7 +638,9 @@
       }
     }
     if (pyStatus) {
-      pyStatus.textContent = cursoTieneCodigo()
+      pyStatus.textContent = cursoTieneClasesVideo()
+        ? "Curso listo. Abre un módulo y selecciona una clase."
+        : cursoTieneCodigo()
         ? "Cargando Python en el navegador…"
         : "Curso listo. Elige la primera pregunta para empezar.";
       pyStatus.style.background = cursoTieneCodigo() ? "var(--green-soft)" : "var(--bg-card)";
@@ -709,6 +750,30 @@
       return null;
     }
     return null;
+  }
+
+  function clasesMediaModulo(modulo) {
+    if (!modulo || !modulo.teoria) return [];
+    const tpl = document.createElement("template");
+    tpl.innerHTML = modulo.teoria;
+    const links = [
+      ...tpl.content.querySelectorAll(
+        'a[href*="drive.google.com"], a[href*="youtube.com"], a[href*="youtu.be"], a[href*="vimeo.com"]'
+      ),
+    ];
+    return links
+      .map((link, index) => {
+        const embed = urlEmbedMedia(link.href);
+        if (!embed || embed.kind === "folder") return null;
+        return {
+          id: `clase-${index + 1}`,
+          numero: index + 1,
+          titulo: (link.textContent || `Clase ${index + 1}`).trim(),
+          href: link.href,
+          embed,
+        };
+      })
+      .filter(Boolean);
   }
 
   function insertarEmbedsMedia(cont) {
@@ -848,6 +913,45 @@
       modulo.id,
       media.presentacion
     );
+  }
+
+  function abrirClaseMedia(moduloId, classId) {
+    const modulo = modulos.find((m) => m.id === moduloId);
+    if (!modulo) return;
+    const clase = clasesMediaModulo(modulo).find((c) => c.id === classId);
+    if (!clase) return;
+
+    document.body.classList.remove("exercise-focus");
+    ejercicioActual = null;
+    indiceActual = -1;
+    moduloExpandidoId = moduloId;
+    mediaActual = `${moduloId}:${classId}`;
+    if (cursoActual) setHashSilencioso(hashClase(slugCurso(cursoActual), moduloId, classId));
+
+    welcome.classList.add("hidden");
+    exercise.classList.add("hidden");
+    mediaPanel.classList.remove("hidden");
+
+    $("#mediaBadge").textContent = `${modulo.emoji} Clase ${clase.numero}`;
+    $("#mediaTitulo").textContent = clase.titulo;
+    $("#mediaSub").innerHTML = modulo.intro || "";
+    $("#mediaPlayers").innerHTML = "";
+    $("#mediaTeoria").innerHTML = `
+      <section class="drive-embeds class-video-view">
+        <div class="media-player-shell">
+          <div class="media-player-title">${escaparHtml(clase.titulo)}</div>
+          <iframe
+            title="${escaparHtml(clase.titulo)}"
+            src="${clase.embed.src}"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            allowfullscreen></iframe>
+        </div>
+        <a class="media-pres-link" href="${clase.href}" target="_blank" rel="noopener">Abrir video en ${clase.embed.provider}</a>
+      </section>`;
+
+    renderSidebar();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // --- Abre un ejercicio en el workspace -----------------------------------

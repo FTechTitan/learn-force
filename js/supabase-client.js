@@ -154,6 +154,7 @@ const PushSubscriptions = {
 // ---------------------------------------------------------------------------
 function normalizarCurso(row) {
   const modules = (row.course_modules || [])
+    .filter((m) => m.is_published !== false)
     .slice()
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     .map((m) => ({
@@ -164,6 +165,7 @@ function normalizarCurso(row) {
       teoria: m.theory || "",
       media: m.media || null,
       ejercicios: (m.course_items || [])
+        .filter((it) => it.is_published !== false)
         .slice()
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
         .map((it) => ({
@@ -206,6 +208,7 @@ const CursosRemotos = {
         description,
         emoji,
         media,
+        is_published,
         sort_order,
         course_modules (
           id,
@@ -214,6 +217,7 @@ const CursosRemotos = {
           intro,
           theory,
           media,
+          is_published,
           sort_order,
           course_items!course_items_module_course_fk (
             id,
@@ -229,10 +233,12 @@ const CursosRemotos = {
             explanation,
             solution_html,
             steps,
+            is_published,
             sort_order
           )
         )
       `)
+      .eq("is_published", true)
       .order("sort_order", { ascending: true })
       .order("sort_order", { referencedTable: "course_modules", ascending: true })
       .order("sort_order", { referencedTable: "course_modules.course_items", ascending: true });
