@@ -72,7 +72,7 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-embed");
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-lazy-drive");
         let refrescadoPorSw = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refrescadoPorSw) return;
@@ -681,23 +681,44 @@
 
     const section = document.createElement("section");
     section.className = "drive-embeds";
-    section.innerHTML = "<h3>Vista embebida de Drive</h3>";
+    section.innerHTML = `
+      <div class="drive-embeds-title">
+        <h3>Videos de Drive</h3>
+        <span>Cargan uno por uno para no pegar la pagina.</span>
+      </div>`;
 
     embeds.forEach(({ link, embed }, i) => {
       const card = document.createElement("article");
       card.className = `drive-embed-card drive-embed-${embed.kind}`;
       card.innerHTML = `
         <div class="drive-embed-head">
-          <span>${embed.kind === "folder" ? "Carpeta" : "Video"}</span>
+          <span>${escaparHtml(link.textContent || `Recurso Drive ${i + 1}`)}</span>
           <a href="${link.href}" target="_blank" rel="noopener">Abrir en Drive</a>
         </div>
+        <div class="drive-embed-placeholder">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            data-drive-src="${embed.src}"
+            data-drive-title="${escaparHtml(link.textContent || `Recurso Drive ${i + 1}`)}">
+            ${embed.kind === "folder" ? "Ver carpeta" : "Ver video"}
+          </button>
+        </div>`;
+      section.appendChild(card);
+    });
+
+    section.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-drive-src]");
+      if (!btn) return;
+      const holder = btn.closest(".drive-embed-placeholder");
+      if (!holder) return;
+      holder.innerHTML = `
         <iframe
-          title="${escaparHtml(link.textContent || `Recurso Drive ${i + 1}`)}"
-          src="${embed.src}"
+          title="${escaparHtml(btn.getAttribute("data-drive-title") || "Recurso Drive")}"
+          src="${btn.getAttribute("data-drive-src")}"
           loading="lazy"
           allow="autoplay; fullscreen"
           allowfullscreen></iframe>`;
-      section.appendChild(card);
     });
 
     cont.appendChild(section);
