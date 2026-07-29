@@ -250,6 +250,26 @@
     abrirDesdeHash();
   }
 
+  function limpiarCursosRemotos() {
+    cursos = [];
+    cursoActual = null;
+    reconstruirEjerciciosPlanos();
+    ejercicioActual = null;
+    indiceActual = -1;
+    mediaActual = null;
+    moduloExpandidoId = null;
+    quizRespuesta = null;
+    localStorage.removeItem(COURSE_STORAGE_KEY);
+    setHashSilencioso("");
+    exercise.classList.add("hidden");
+    mediaPanel.classList.add("hidden");
+    welcome.classList.remove("hidden");
+    actualizarMarcaCurso();
+    pintarSelectorCursos();
+    renderSidebar();
+    pintarWelcome();
+  }
+
   function abrirDesdeHash() {
     const ruta = leerRutaHash();
     if (!ruta.courseId) return;
@@ -272,7 +292,7 @@
   }
 
   async function cargarCursosRemotos() {
-    if (!window.CursosRemotos) return;
+    if (!window.CursosRemotos || !usuarioActual) return;
     try {
       const remotos = await window.CursosRemotos.cargarPublicados();
       mezclarCursosRemotos(remotos);
@@ -319,10 +339,10 @@
     usuarioActual = user;
     if (!user) {
       // Logout: el progreso local queda como "invitado" en este dispositivo.
-      renderSidebar();
-      if (ejercicioActual && indiceActual >= 0) abrirEjercicio(indiceActual);
+      limpiarCursosRemotos();
       return;
     }
+    await cargarCursosRemotos();
     let remoto;
     try {
       remoto = await window.ProgresoRemoto.cargar();
@@ -461,16 +481,16 @@
       });
       divMod.appendChild(header);
 
-      // Clase en video/audio del módulo (si tiene). Libre, no se bloquea.
-      if (expandido && modulo.media && (modulo.media.video || modulo.media.audio)) {
-        const esVideo = !!modulo.media.video;
+      // Contenido del módulo: teoría, recursos externos Drive y media directa si existe.
+      if (expandido && (modulo.teoria || modulo.intro || (modulo.media && (modulo.media.video || modulo.media.audio)))) {
+        const tieneMediaDirecta = !!(modulo.media && (modulo.media.video || modulo.media.audio));
         const mItem = document.createElement("div");
         mItem.className = "ej-item media-link";
         if (mediaActual === modulo.id) mItem.classList.add("activo");
         mItem.innerHTML = `
-          <span class="estado">${esVideo ? "📺" : "🎧"}</span>
-          <span class="nombre">Clase en ${esVideo ? "video" : "audio"}</span>
-          <span class="nivel-dots">${esVideo ? "video" : "audio"}</span>`;
+          <span class="estado">${tieneMediaDirecta ? "📺" : "🔗"}</span>
+          <span class="nombre">Contenido y videos</span>
+          <span class="nivel-dots">${tieneMediaDirecta ? "media" : "links"}</span>`;
         mItem.addEventListener("click", () => abrirMediaModulo(modulo.id));
         divMod.appendChild(mItem);
       }
@@ -488,7 +508,7 @@
 
         const estadoIcon = completado ? "✅" : desbloqueado ? "⚪" : "🔒";
         const tipo = ej.type || "code";
-        const dots = tipo === "guided_steps" ? "pasos" : tipo.startsWith("quiz") ? "quiz" : "●".repeat(ej.nivel || 1);
+        const dots = tipo === "guided_steps" ? "pasos" : tipo === "development" ? "desarrollo" : tipo.startsWith("quiz") ? "quiz" : "●".repeat(ej.nivel || 1);
 
         item.innerHTML = `
           <span class="estado">${estadoIcon}</span>
@@ -528,8 +548,8 @@
       if (h) h.textContent = "Elige un curso";
       if (p) {
         p.innerHTML = cursos.length
-          ? "Estos cursos vienen desde Supabase. Puedes revisar el contenido sin cuenta; para comprobar respuestas se pide login."
-          : "Cargando cursos desde Supabase…";
+          ? "Estos cursos vienen desde Supabase. El catálogo requiere iniciar sesión."
+          : "Inicia sesión para ver los cursos disponibles.";
       }
       if (list) {
         list.innerHTML = cursos.length
@@ -545,7 +565,7 @@
                 </button>
               </li>
             `).join("")
-          : `<li>Cargando catálogo…</li>`;
+          : `<li>El catálogo se muestra solo para usuarios con sesión iniciada.</li>`;
         list.querySelectorAll("[data-course-id]").forEach((btn) => {
           btn.addEventListener("click", () => cambiarCurso(btn.getAttribute("data-course-id")));
         });
@@ -553,7 +573,7 @@
       if (pyStatus) {
         pyStatus.textContent = cursos.length
           ? "Selecciona un curso para ver módulos y ejercicios."
-          : "Conectando con Supabase…";
+          : "Inicia sesión para cargar el catálogo.";
         pyStatus.style.background = "var(--bg-card)";
       }
       return;
@@ -626,6 +646,63 @@
     });
   }
 
+  function urlEmbedDrive(url) {
+    try {
+      const u = new URL(url);
+      if (!u.hostname.includes("drive.google.com")) return null;
+
+      const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
+      if (fileMatch) {
+        return {
+          kind: "file",
+          src: `https://drive.google.com/file/d/${fileMatch[1]}/preview`,
+        };
+      }
+
+      const folderMatch = u.pathname.match(/\/drive\/folders\/([^/]+)/);
+      if (folderMatch) {
+        return {
+          kind: "folder",
+          src: `https://drive.google.com/embeddedfolderview?id=${folderMatch[1]}#grid`,
+        };
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  function insertarEmbedsDrive(cont) {
+    const links = [...cont.querySelectorAll('a[href*="drive.google.com"]')];
+    const embeds = links
+      .map((a) => ({ link: a, embed: urlEmbedDrive(a.href) }))
+      .filter((it) => it.embed);
+    if (!embeds.length) return;
+
+    const section = document.createElement("section");
+    section.className = "drive-embeds";
+    section.innerHTML = "<h3>Vista embebida de Drive</h3>";
+
+    embeds.forEach(({ link, embed }, i) => {
+      const card = document.createElement("article");
+      card.className = `drive-embed-card drive-embed-${embed.kind}`;
+      card.innerHTML = `
+        <div class="drive-embed-head">
+          <span>${embed.kind === "folder" ? "Carpeta" : "Video"}</span>
+          <a href="${link.href}" target="_blank" rel="noopener">Abrir en Drive</a>
+        </div>
+        <iframe
+          title="${escaparHtml(link.textContent || `Recurso Drive ${i + 1}`)}"
+          src="${embed.src}"
+          loading="lazy"
+          allow="autoplay; fullscreen"
+          allowfullscreen></iframe>`;
+      section.appendChild(card);
+    });
+
+    cont.appendChild(section);
+  }
+
   // Muestra el panel de media y oculta welcome/ejercicio.
   function mostrarPanelMedia(badge, titulo, subHtml, items, teoriaHtml, claveActiva, presUrl) {
     document.body.classList.remove("exercise-focus");
@@ -646,7 +723,9 @@
         ` <a class="media-pres-link" href="${presUrl}" target="_blank" rel="noopener">📊 Ver presentación</a>`
       );
     }
-    $("#mediaTeoria").innerHTML = teoriaHtml || "";
+    const mediaTeoria = $("#mediaTeoria");
+    mediaTeoria.innerHTML = teoriaHtml || "";
+    insertarEmbedsDrive(mediaTeoria);
     pintarReproductores($("#mediaPlayers"), items);
 
     renderSidebar();
@@ -664,20 +743,21 @@
 
   function abrirMediaModulo(moduloId) {
     const modulo = modulos.find((m) => m.id === moduloId);
-    if (!modulo || !modulo.media) return;
+    if (!modulo) return;
     moduloExpandidoId = moduloId;
     if (cursoActual) setHashSilencioso(hashModulo(slugCurso(cursoActual), moduloId));
     const items = [];
-    if (modulo.media.video) items.push({ kind: "video", src: modulo.media.video, label: `Video · ${modulo.titulo}` });
-    if (modulo.media.audio) items.push({ kind: "audio", src: modulo.media.audio, label: `Audio · ${modulo.titulo}` });
+    const media = modulo.media || {};
+    if (media.video) items.push({ kind: "video", src: media.video, label: `Video · ${modulo.titulo}` });
+    if (media.audio) items.push({ kind: "audio", src: media.audio, label: `Audio · ${modulo.titulo}` });
     mostrarPanelMedia(
       `${modulo.emoji} ${modulo.titulo}`,
-      `Clase: ${modulo.titulo}`,
+      `Contenido: ${modulo.titulo}`,
       modulo.intro,
       items,
       modulo.teoria,
       modulo.id,
-      modulo.media.presentacion
+      media.presentacion
     );
   }
 
@@ -709,13 +789,14 @@
     const tipo = ej.type || "code";
     const esQuiz = tipo.startsWith("quiz");
     const esGuiado = tipo === "guided_steps";
+    const esDesarrollo = tipo === "development";
     const bloqueadoPorLogin = !usuarioActual;
     $("#exerciseLoginGate").classList.toggle("hidden", !bloqueadoPorLogin);
-    $("#quizArea").classList.toggle("hidden", bloqueadoPorLogin || !(esQuiz || esGuiado));
-    $("#exerciseNextRow").classList.toggle("hidden", bloqueadoPorLogin || !(esQuiz || esGuiado));
-    document.querySelector(".editor-zone").classList.toggle("hidden", bloqueadoPorLogin || esQuiz || esGuiado);
+    $("#quizArea").classList.toggle("hidden", bloqueadoPorLogin || !(esQuiz || esGuiado || esDesarrollo));
+    $("#exerciseNextRow").classList.toggle("hidden", bloqueadoPorLogin || !(esQuiz || esGuiado || esDesarrollo));
+    document.querySelector(".editor-zone").classList.toggle("hidden", bloqueadoPorLogin || tipo !== "code");
     document.querySelector(".output-zone").classList.toggle("hidden", bloqueadoPorLogin);
-    document.querySelector(".output-zone").querySelector("h3").textContent = (esQuiz || esGuiado) ? "Corrección" : "Resultado";
+    document.querySelector(".output-zone").querySelector("h3").textContent = (esQuiz || esGuiado || esDesarrollo) ? "Avance" : "Resultado";
 
     if (bloqueadoPorLogin) {
       $("#quizArea").innerHTML = "";
@@ -730,6 +811,8 @@
       pintarQuiz(ej);
     } else if (esGuiado) {
       pintarPasosGuiados(ej);
+    } else if (esDesarrollo) {
+      pintarDesarrollo(ej);
     } else {
       // Restaura el código guardado del alumno o el starter del ejercicio.
       const guardado = estado.codigo[ej.id];
@@ -744,6 +827,8 @@
       ? "Elige una respuesta y toca «Comprobar»."
       : esGuiado
       ? "Completa el paso activo para avanzar."
+      : esDesarrollo
+      ? "Escribe tu respuesta y guárdala cuando esté lista."
       : "Tocá «Ejecutar» o «Comprobar» para ver la salida.";
 
     $("#btnNext").disabled = indiceActual >= ejerciciosPlanos.length - 1;
@@ -804,6 +889,39 @@
       });
     });
     $("#btnQuizCheck").addEventListener("click", comprobarQuiz);
+  }
+
+  function pintarDesarrollo(ej) {
+    const area = $("#quizArea");
+    if (!estado.pasos[ej.id]) estado.pasos[ej.id] = { answer: "" };
+    const respuesta = estado.pasos[ej.id].answer || "";
+    area.innerHTML = `
+      <label class="guided-input-label">
+        <span>Tu respuesta</span>
+        <textarea class="guided-input" id="developmentAnswer" rows="8" placeholder="Escribe tu desarrollo, propuesta o plan de acción...">${escaparHtml(respuesta)}</textarea>
+      </label>
+      ${ej.solutionHtml ? `<details class="guided-hint"><summary>Guía de respuesta</summary><div>${ej.solutionHtml}</div></details>` : ""}
+      <button type="button" class="btn btn-primary btn-sm" id="btnDevelopmentSave">Guardar y marcar completado</button>`;
+    $("#developmentAnswer").addEventListener("input", (ev) => {
+      estado.pasos[ej.id].answer = ev.target.value;
+      guardarProgreso();
+    });
+    $("#btnDevelopmentSave").addEventListener("click", comprobarDesarrollo);
+  }
+
+  function comprobarDesarrollo() {
+    if (!requerirLoginParaValidar()) return;
+    const input = $("#developmentAnswer");
+    const respuesta = input ? input.value.trim() : "";
+    if (!respuesta) {
+      setOutput('<span class="fail-line">Escribe una respuesta antes de marcar la actividad como completada.</span>', "fail");
+      return;
+    }
+    if (!estado.pasos[ejercicioActual.id]) estado.pasos[ejercicioActual.id] = {};
+    estado.pasos[ejercicioActual.id].answer = respuesta;
+    guardarProgreso();
+    setOutput('<span class="ok-line">Respuesta guardada.</span>', "ok");
+    marcarCompletado(ejercicioActual);
   }
 
   function estadoPasos(ej) {
@@ -1060,6 +1178,10 @@
       setOutput("Completa el paso activo usando el botón «Comprobar paso».", "");
       return;
     }
+    if (ejercicioActual && (ejercicioActual.type || "code") === "development") {
+      comprobarDesarrollo();
+      return;
+    }
     if (!requerirLoginParaValidar()) return;
     guardarCodigoActual();
     await asegurarPython();
@@ -1255,7 +1377,6 @@
     pintarSelectorCursos();
     pintarWelcome();
     renderSidebar();
-    cargarCursosRemotos();
 
     if (courseSelect) {
       courseSelect.addEventListener("change", () => cambiarCurso(courseSelect.value));
@@ -1278,6 +1399,11 @@
 
     // Sincroniza con la nube cuando cambia la sesión (login/logout).
     if (window.AuthUI) window.AuthUI.onUsuario(sincronizarConRemoto);
+    if (window.Auth) {
+      window.Auth.usuarioActual()
+        .then((user) => sincronizarConRemoto(user))
+        .catch((e) => console.warn("No se pudo leer la sesión inicial:", e.message || e));
+    }
 
     // Expone el progreso para el modo prueba (saber qué módulos están completos).
     window.ProgresoApp = {

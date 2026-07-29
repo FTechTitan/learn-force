@@ -10,6 +10,8 @@
 
   const $ = (s) => document.querySelector(s);
   const suscriptores = [];
+  let usuarioActual = null;
+  let sesionInicialResuelta = false;
 
   // Referencias
   const modal = $("#authModal");
@@ -53,6 +55,8 @@
   }
 
   function notificar(user) {
+    usuarioActual = user || null;
+    sesionInicialResuelta = true;
     pintarSesion(user);
     suscriptores.forEach((cb) => {
       try { cb(user); } catch (e) { console.error(e); }
@@ -85,11 +89,16 @@
 
     // Sesión inicial + cambios.
     window.Auth.onCambio((user) => notificar(user));
-    window.Auth.usuarioActual().then((user) => pintarSesion(user));
+    window.Auth.usuarioActual().then((user) => notificar(user));
   }
 
   window.AuthUI = {
-    onUsuario(cb) { suscriptores.push(cb); },
+    onUsuario(cb) {
+      suscriptores.push(cb);
+      if (sesionInicialResuelta) {
+        try { cb(usuarioActual); } catch (e) { console.error(e); }
+      }
+    },
     abrir,
   };
 

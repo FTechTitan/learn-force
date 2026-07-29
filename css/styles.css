@@ -889,6 +889,27 @@ audio.media-el { height: 44px; background: var(--bg-soft); }
   background: var(--bg); border: 1px solid var(--border);
   border-radius: 8px; padding: 12px 14px; overflow-x: auto;
 }
+.drive-embeds {
+  display: grid; gap: 16px; margin-top: 22px; padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.drive-embeds h3 { margin: 0; font-size: 17px; }
+.drive-embed-card {
+  overflow: hidden; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--bg-soft);
+}
+.drive-embed-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  color: var(--text-dim); font-size: 13px;
+}
+.drive-embed-head a { color: var(--py-blue-light); text-decoration: none; }
+.drive-embed-head a:hover { text-decoration: underline; }
+.drive-embed-card iframe {
+  display: block; width: 100%; height: min(62vh, 520px);
+  min-height: 280px; border: 0; background: #05070b;
+}
+.drive-embed-folder iframe { height: min(54vh, 460px); }
 
 /* Entradas de media en el sidebar (no se bloquean) */
 .ej-item.media-link { color: var(--py-blue-light); }
