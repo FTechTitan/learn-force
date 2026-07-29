@@ -646,25 +646,64 @@
     });
   }
 
-  function urlEmbedDrive(url) {
+  function urlEmbedMedia(url) {
     try {
       const u = new URL(url);
-      if (!u.hostname.includes("drive.google.com")) return null;
+      const host = u.hostname.replace(/^www\./, "");
 
-      const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
-      if (fileMatch) {
-        return {
-          kind: "file",
-          src: `https://drive.google.com/file/d/${fileMatch[1]}/preview`,
-        };
+      if (host.includes("drive.google.com")) {
+        const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
+        if (fileMatch) {
+          return {
+            provider: "Drive",
+            kind: "file",
+            action: "Ver video",
+            src: `https://drive.google.com/file/d/${fileMatch[1]}/preview`,
+          };
+        }
+
+        const folderMatch = u.pathname.match(/\/drive\/folders\/([^/]+)/);
+        if (folderMatch) {
+          return {
+            provider: "Drive",
+            kind: "folder",
+            action: "Ver carpeta",
+            src: `https://drive.google.com/embeddedfolderview?id=${folderMatch[1]}#grid`,
+          };
+        }
       }
 
-      const folderMatch = u.pathname.match(/\/drive\/folders\/([^/]+)/);
-      if (folderMatch) {
-        return {
-          kind: "folder",
-          src: `https://drive.google.com/embeddedfolderview?id=${folderMatch[1]}#grid`,
-        };
+      if (host === "youtu.be" || host.endsWith("youtube.com")) {
+        const id =
+          host === "youtu.be"
+            ? u.pathname.split("/").filter(Boolean)[0]
+            : u.searchParams.get("v") ||
+              (u.pathname.match(/\/(?:embed|shorts|live)\/([^/?#]+)/) || [])[1];
+        if (id) {
+          return {
+            provider: "YouTube",
+            kind: "youtube",
+            action: "Ver video",
+            src: `https://www.youtube.com/embed/${encodeURIComponent(id)}`,
+          };
+        }
+      }
+
+      if (host === "vimeo.com" || host.endsWith(".vimeo.com")) {
+        const playerMatch = u.pathname.match(/\/video\/(\d+)/);
+        const plainMatch = u.pathname.match(/\/(\d+)(?:\/([^/?#]+))?/);
+        const videoId = playerMatch?.[1] || plainMatch?.[1];
+        const hash = u.searchParams.get("h") || plainMatch?.[2];
+        if (videoId) {
+          const src = new URL(`https://player.vimeo.com/video/${videoId}`);
+          if (hash) src.searchParams.set("h", hash);
+          return {
+            provider: "Vimeo",
+            kind: "vimeo",
+            action: "Ver video",
+            src: src.toString(),
+          };
+        }
       }
     } catch (_) {
       return null;
@@ -672,10 +711,14 @@
     return null;
   }
 
-  function insertarEmbedsDrive(cont) {
-    const links = [...cont.querySelectorAll('a[href*="drive.google.com"]')];
+  function insertarEmbedsMedia(cont) {
+    const links = [
+      ...cont.querySelectorAll(
+        'a[href*="drive.google.com"], a[href*="youtube.com"], a[href*="youtu.be"], a[href*="vimeo.com"]'
+      ),
+    ];
     const embeds = links
-      .map((a) => ({ link: a, embed: urlEmbedDrive(a.href) }))
+      .map((a) => ({ link: a, embed: urlEmbedMedia(a.href) }))
       .filter((it) => it.embed);
     if (!embeds.length) return;
 
@@ -683,45 +726,50 @@
     section.className = "drive-embeds";
     section.innerHTML = `
       <div class="drive-embeds-title">
-        <h3>Videos de Drive</h3>
+        <h3>Videos y recursos embebidos</h3>
         <span>Cargan uno por uno para no pegar la pagina.</span>
       </div>`;
 
     embeds.forEach(({ link, embed }, i) => {
+      const title = link.textContent || `Recurso ${embed.provider} ${i + 1}`;
       const card = document.createElement("article");
       card.className = `drive-embed-card drive-embed-${embed.kind}`;
       card.innerHTML = `
         <div class="drive-embed-head">
-          <span>${escaparHtml(link.textContent || `Recurso Drive ${i + 1}`)}</span>
-          <a href="${link.href}" target="_blank" rel="noopener">Abrir en Drive</a>
+          <span>${escaparHtml(title)}</span>
+          <a href="${link.href}" target="_blank" rel="noopener">Abrir en ${embed.provider}</a>
         </div>
         <div class="drive-embed-placeholder">
           <button
             type="button"
             class="btn btn-primary btn-sm"
-            data-drive-src="${embed.src}"
-            data-drive-title="${escaparHtml(link.textContent || `Recurso Drive ${i + 1}`)}">
-            ${embed.kind === "folder" ? "Ver carpeta" : "Ver video"}
+            data-embed-src="${embed.src}"
+            data-embed-title="${escaparHtml(title)}">
+            ${embed.action}
           </button>
         </div>`;
       section.appendChild(card);
     });
 
     section.addEventListener("click", (ev) => {
-      const btn = ev.target.closest("[data-drive-src]");
+      const btn = ev.target.closest("[data-embed-src]");
       if (!btn) return;
       const holder = btn.closest(".drive-embed-placeholder");
       if (!holder) return;
       holder.innerHTML = `
         <iframe
-          title="${escaparHtml(btn.getAttribute("data-drive-title") || "Recurso Drive")}"
-          src="${btn.getAttribute("data-drive-src")}"
+          title="${escaparHtml(btn.getAttribute("data-embed-title") || "Recurso embebido")}"
+          src="${btn.getAttribute("data-embed-src")}"
           loading="lazy"
-          allow="autoplay; fullscreen"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           allowfullscreen></iframe>`;
     });
 
     cont.appendChild(section);
+  }
+
+  function insertarEmbedsDrive(cont) {
+    insertarEmbedsMedia(cont);
   }
 
   // Muestra el panel de media y oculta welcome/ejercicio.
