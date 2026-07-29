@@ -72,7 +72,7 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js");
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-embed");
         let refrescadoPorSw = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refrescadoPorSw) return;
