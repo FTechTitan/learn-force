@@ -116,6 +116,25 @@
     return `<b style="color:${color}">${n.toFixed(1)}</b>${extra}`;
   }
 
+  function accesoCell(u) {
+    const estado = u.acceso || "none";
+    const labels = {
+      admin: "admin",
+      approved: "aprobado",
+      pending: "pendiente",
+      rejected: "rechazado",
+      none: "sin solicitud",
+    };
+    const cls = estado === "approved" || estado === "admin"
+      ? "ok"
+      : estado === "pending"
+      ? "pending"
+      : estado === "rejected"
+      ? "danger"
+      : "";
+    return `<span class="tag-access ${cls}">${labels[estado] || estado}</span>`;
+  }
+
   function abrirPanel() {
     let ov = document.getElementById("adminOverlay");
     if (!ov) {
@@ -300,6 +319,7 @@
       .map((u) => `
         <tr>
           <td>${u.email || "—"} ${u.es_admin ? '<span class="tag-admin">admin</span>' : ""}</td>
+          <td>${accesoCell(u)}</td>
           <td>${avanceCell(u)}</td>
           <td>${modulosCompletos(u.completados_ids)}/${modulosInfo.length}</td>
           <td>${fmtDuracion(u.segundos)}</td>
@@ -307,6 +327,11 @@
           <td>${notaCell(u)}</td>
           <td>${fmtFecha(u.ultima_actividad)}</td>
           <td class="acciones">
+            ${u.es_admin ? "" : `
+              <button class="btn-row" data-access="approved" data-user="${u.id}">Aprobar</button>
+              <button class="btn-row" data-access="rejected" data-user="${u.id}">Rechazar</button>
+              <button class="btn-row danger" data-access="pending" data-user="${u.id}">Revocar</button>
+            `}
             <button class="btn-row" data-ver="${u.id}">Ver</button>
             <button class="btn-row danger" data-reset="${u.id}" data-email="${u.email}">Reset</button>
             <button class="btn-row danger" data-del="${u.id}" data-email="${u.email}">Borrar</button>
@@ -326,6 +351,7 @@
     body.innerHTML = `
       <div class="admin-cards">
         <div class="admin-card"><div class="num">${t.alumnos ?? 0}</div><div class="lbl">Alumnos registrados</div></div>
+        <div class="admin-card"><div class="num">${t.solicitudes_pendientes ?? 0}</div><div class="lbl">Solicitudes pendientes</div></div>
         <div class="admin-card"><div class="num">${avancePromedio}%</div><div class="lbl">Avance promedio del curso 📈</div></div>
         <div class="admin-card"><div class="num">${fmtDuracion(segundosTotales)}</div><div class="lbl">Tiempo total dedicado ⏱</div></div>
         <div class="admin-card"><div class="num">${t.preguntas ?? 0}</div><div class="lbl">Preguntas al tutor 🤖</div></div>
@@ -337,8 +363,8 @@
 
       <div class="admin-section-title">Alumnos</div>
       <table class="admin-table">
-        <thead><tr><th>Email</th><th>Avance</th><th>Módulos</th><th>Tiempo ⏱</th><th>Preguntas 🤖</th><th>Nota predicha 📝</th><th>Última actividad</th><th>Acciones</th></tr></thead>
-        <tbody>${filas || '<tr><td colspan="8" class="admin-loading">Sin alumnos.</td></tr>'}</tbody>
+        <thead><tr><th>Email</th><th>Acceso</th><th>Avance</th><th>Módulos</th><th>Tiempo ⏱</th><th>Preguntas 🤖</th><th>Nota predicha 📝</th><th>Última actividad</th><th>Acciones</th></tr></thead>
+        <tbody>${filas || '<tr><td colspan="9" class="admin-loading">Sin alumnos.</td></tr>'}</tbody>
       </table>
 
       <div id="adminDetalle"></div>`;
@@ -350,6 +376,8 @@
       b.addEventListener("click", () => resetUsuario(b.getAttribute("data-reset"), b.getAttribute("data-email"))));
     body.querySelectorAll("[data-del]").forEach((b) =>
       b.addEventListener("click", () => borrarUsuario(b.getAttribute("data-del"), b.getAttribute("data-email"))));
+    body.querySelectorAll("[data-access]").forEach((b) =>
+      b.addEventListener("click", () => cambiarAcceso(b.getAttribute("data-user"), b.getAttribute("data-access"))));
   }
 
   function escapar(s) {
@@ -454,6 +482,15 @@
     if (!confirm(`¿Eliminar la cuenta de ${email} por completo? Esta acción no se puede deshacer.`)) return;
     try {
       await llamar("delete_user", { user_id: userId });
+      cargarOverview();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function cambiarAcceso(userId, status) {
+    const texto = status === "approved" ? "aprobar" : status === "rejected" ? "rechazar" : "revocar";
+    if (!confirm(`¿${texto} el acceso de este usuario?`)) return;
+    try {
+      await llamar("set_access_status", { user_id: userId, status });
       cargarOverview();
     } catch (e) { alert(e.message); }
   }

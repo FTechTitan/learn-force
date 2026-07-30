@@ -77,6 +77,14 @@ Deno.serve(async (req: Request) => {
         es_admin: (u.app_metadata as Record<string, unknown> | null)?.role === "admin",
       }));
 
+      // Estado de acceso al catalogo por usuario.
+      const { data: accesos, error: eAccesos } = await admin
+        .from("course_access_requests")
+        .select("user_id, email, status, requested_at, reviewed_at, reviewed_by");
+      if (eAccesos && eAccesos.code !== "42P01") throw eAccesos;
+      const accesoPorUsuario: Record<string, Record<string, unknown>> = {};
+      (accesos || []).forEach((r) => { accesoPorUsuario[r.user_id] = r; });
+
       // Todo el progreso.
       const { data: prog, error: e2 } = await admin
         .from("progress")
@@ -126,6 +134,9 @@ Deno.serve(async (req: Request) => {
 
       const usuariosEnriquecidos = usuarios.map((u) => ({
         ...u,
+        acceso: u.es_admin ? "admin" : String(accesoPorUsuario[u.id]?.status || "none"),
+        acceso_solicitado: accesoPorUsuario[u.id]?.requested_at || null,
+        acceso_revisado: accesoPorUsuario[u.id]?.reviewed_at || null,
         completados: completadosPorUsuario[u.id] || 0,
         completados_ids: completadosIdsPorUsuario[u.id] || [],
         segundos: segundosPorUsuario[u.id] || 0,
@@ -145,6 +156,7 @@ Deno.serve(async (req: Request) => {
       return json({
         totales: {
           alumnos: usuarios.length,
+          solicitudes_pendientes: (accesos || []).filter((r) => r.status === "pending").length,
           ejercicios_completados: (prog || []).filter((r) => r.completed).length,
           preguntas: (preguntas || []).length,
           pruebas_rendidas: (examenes || []).length,
@@ -153,6 +165,31 @@ Deno.serve(async (req: Request) => {
         usuarios: usuariosEnriquecidos,
         por_ejercicio: porEjercicio,
       }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    if (action === "set_access_status") {
+      const userId = body.user_id as string;
+      const status = String(body.status || "");
+      if (!userId) return json({ error: "Falta user_id" }, 400, headers);
+      if (!["pending", "approved", "rejected"].includes(status)) {
+        return json({ error: "Estado de acceso invalido" }, 400, headers);
+      }
+      const { data: target, error: targetErr } = await admin.auth.admin.getUserById(userId);
+      if (targetErr) throw targetErr;
+      const email = target.user?.email || null;
+      const { error } = await admin
+        .from("course_access_requests")
+        .upsert({
+          user_id: userId,
+          email,
+          status,
+          requested_at: new Date().toISOString(),
+          reviewed_at: status === "pending" ? null : new Date().toISOString(),
+          reviewed_by: status === "pending" ? null : caller.id,
+        }, { onConflict: "user_id" });
+      if (error) throw error;
+      return json({ ok: true }, 200, headers);
     }
 
     // ----------------------------------------------------------------------

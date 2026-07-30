@@ -150,6 +150,40 @@ const PushSubscriptions = {
 };
 
 // ---------------------------------------------------------------------------
+//  Solicitud de acceso al catalogo
+// ---------------------------------------------------------------------------
+const AccesoCursos = {
+  async estado(user) {
+    if (!user) return { status: "anonymous" };
+    if (user.app_metadata?.role === "admin") return { status: "approved" };
+    const { data, error } = await sb
+      .from("course_access_requests")
+      .select("status, requested_at, reviewed_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return data || { status: "none" };
+  },
+
+  async solicitar(user) {
+    if (!user) throw new Error("Inicia sesion para solicitar acceso.");
+    const { error } = await sb
+      .from("course_access_requests")
+      .upsert({
+        user_id: user.id,
+        email: user.email || null,
+        status: "pending",
+        note: null,
+        requested_at: new Date().toISOString(),
+        reviewed_at: null,
+        reviewed_by: null,
+      }, { onConflict: "user_id" });
+    if (error) throw error;
+    return AccesoCursos.estado(user);
+  },
+};
+
+// ---------------------------------------------------------------------------
 //  Cursos remotos configurables desde Supabase
 // ---------------------------------------------------------------------------
 function normalizarCurso(row) {
@@ -250,4 +284,5 @@ const CursosRemotos = {
 window.Auth = Auth;
 window.ProgresoRemoto = ProgresoRemoto;
 window.PushSubscriptions = PushSubscriptions;
+window.AccesoCursos = AccesoCursos;
 window.CursosRemotos = CursosRemotos;

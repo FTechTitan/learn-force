@@ -16,6 +16,7 @@
   let cursoActual = null;
   let modulos = [];
   let swRegistration = null;
+  let estadoAcceso = { status: "anonymous" };
 
   // Lista plana de ejercicios en orden, con referencia a su módulo.
   let ejerciciosPlanos = [];
@@ -80,7 +81,7 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260729-video-classes-only");
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260730-access-requests");
         let refrescadoPorSw = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refrescadoPorSw) return;
@@ -306,10 +307,40 @@
   async function cargarCursosRemotos() {
     if (!window.CursosRemotos || !usuarioActual) return;
     try {
+      estadoAcceso = window.AccesoCursos
+        ? await window.AccesoCursos.estado(usuarioActual)
+        : { status: "approved" };
+      if (estadoAcceso.status !== "approved") {
+        limpiarCursosRemotos();
+        return;
+      }
       const remotos = await window.CursosRemotos.cargarPublicados();
       mezclarCursosRemotos(remotos);
     } catch (e) {
       console.warn("No se pudieron cargar cursos desde Supabase:", e.message || e);
+    }
+  }
+
+  async function solicitarAccesoCursos() {
+    if (!usuarioActual) {
+      if (window.AuthUI) window.AuthUI.abrir();
+      return;
+    }
+    const btn = document.querySelector("[data-request-course-access]");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Solicitando...";
+    }
+    try {
+      estadoAcceso = await window.AccesoCursos.solicitar(usuarioActual);
+      limpiarCursosRemotos();
+      mostrarToast("Solicitud enviada. Un admin debe aprobar tu acceso.");
+    } catch (e) {
+      mostrarToast(e.message || "No se pudo solicitar acceso.");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Solicitar acceso";
+      }
     }
   }
 
@@ -351,10 +382,12 @@
     usuarioActual = user;
     if (!user) {
       // Logout: el progreso local queda como "invitado" en este dispositivo.
+      estadoAcceso = { status: "anonymous" };
       limpiarCursosRemotos();
       return;
     }
     await cargarCursosRemotos();
+    if (estadoAcceso.status !== "approved") return;
     let remoto;
     try {
       remoto = await window.ProgresoRemoto.cargar();
@@ -580,13 +613,31 @@
     const list = welcome.querySelector(".welcome-list");
     if (!cursoActual) {
       if (h) h.textContent = "Elige un curso";
+      const sinAcceso = usuarioActual && estadoAcceso.status !== "approved";
       if (p) {
-        p.innerHTML = cursos.length
+        p.innerHTML = sinAcceso
+          ? estadoAcceso.status === "pending"
+            ? "Tu solicitud de acceso esta pendiente de aprobacion."
+            : estadoAcceso.status === "rejected"
+            ? "Tu solicitud fue rechazada. Puedes volver a solicitar acceso."
+            : "Tu cuenta aun no tiene acceso al catalogo."
+          : cursos.length
           ? "Estos cursos vienen desde Supabase. El catálogo requiere iniciar sesión."
           : "Inicia sesión para ver los cursos disponibles.";
       }
       if (list) {
-        list.innerHTML = cursos.length
+        list.innerHTML = sinAcceso
+          ? estadoAcceso.status === "pending"
+            ? `<li class="access-card">
+                <strong>Solicitud enviada</strong>
+                <span>Un admin debe aprobar tu cuenta para ver los cursos.</span>
+              </li>`
+            : `<li class="access-card">
+                <strong>Acceso requerido</strong>
+                <span>Solicita acceso y un admin habilitara tu cuenta.</span>
+                <button type="button" class="btn btn-primary btn-sm" data-request-course-access>Solicitar acceso</button>
+              </li>`
+          : cursos.length
           ? cursos.map((curso) => `
               <li class="course-card">
                 <button type="button" class="course-card-btn" data-course-id="${escaparHtml(curso.id)}">
@@ -600,12 +651,18 @@
               </li>
             `).join("")
           : `<li>El catálogo se muestra solo para usuarios con sesión iniciada.</li>`;
+        const accessBtn = list.querySelector("[data-request-course-access]");
+        if (accessBtn) accessBtn.addEventListener("click", solicitarAccesoCursos);
         list.querySelectorAll("[data-course-id]").forEach((btn) => {
           btn.addEventListener("click", () => cambiarCurso(btn.getAttribute("data-course-id")));
         });
       }
       if (pyStatus) {
-        pyStatus.textContent = cursos.length
+        pyStatus.textContent = sinAcceso
+          ? estadoAcceso.status === "pending"
+            ? "Solicitud pendiente de aprobacion."
+            : "Solicita acceso para cargar el catalogo."
+          : cursos.length
           ? "Selecciona un curso para ver sus módulos."
           : "Inicia sesión para cargar el catálogo.";
         pyStatus.style.background = "var(--bg-card)";
