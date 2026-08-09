@@ -81,7 +81,7 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260809-module-pages");
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260809-module-pages-2");
         let refrescadoPorSw = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refrescadoPorSw) return;
@@ -634,6 +634,17 @@
     return clasesMediaModulo(modulo).reduce((total, clase) => total + segundosDuracion(clase.videoDuration), 0);
   }
 
+  function duracionCurso(modulosCurso) {
+    const seen = new Set();
+    return modulosCurso.reduce((total, modulo) => total + clasesMediaModulo(modulo).reduce((subtotal, clase) => {
+      if (clase.lessonKind === "section") return subtotal;
+      const key = clase.videoUrl || clase.href || clase.id;
+      if (seen.has(key)) return subtotal;
+      seen.add(key);
+      return subtotal + segundosDuracion(clase.videoDuration);
+    }, 0), 0);
+  }
+
   function textoPlanoMarkdown(markdown, limit = 420) {
     const template = document.createElement("template");
     template.innerHTML = renderMarkdownSeguro(markdown || "");
@@ -752,7 +763,7 @@
     const totalTranscripciones = modulosCurso.reduce((total, modulo) =>
       total + clasesMediaModulo(modulo).filter((clase) => clase.hasTranscript).length, 0);
 
-    const totalDuracion = modulosCurso.reduce((total, modulo) => total + duracionModulo(modulo), 0);
+    const totalDuracion = duracionCurso(modulosCurso);
     const programa = modulosCurso.map((modulo) => {
       const clases = clasesMediaModulo(modulo);
       const intro = modulo.overviewMarkdown || modulo.intro || `Contenidos de ${modulo.titulo}.`;
