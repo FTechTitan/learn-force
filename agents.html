@@ -136,17 +136,17 @@
    “ACCIÓN REQUERIDA
    1. Crea tu llave en https://learn.techforce.cl/agents.html
    2. Presiona copiar para dejarla en el portapapeles.
-   3. Responde exactamente: LISTO Y AUTORIZO
+   3. Responde exactamente: LISTO
 
-   Al responder LISTO Y AUTORIZO permites leer una vez el portapapeles exclusivamente para validar esa key y, si funciona, guardarla en $HOME/.config/learnforce/.env. La key permite consultar tus cursos y gestionar tu progreso con tus permisos; permanece hasta eliminarla o revocarla en LearnForce. No se leerá ni guardará otro contenido.”
-10. Espera. La respuesta LISTO Y AUTORIZO es la única confirmación necesaria: no vuelvas a pedir autorización.
+   Al responder LISTO permites leer una vez el portapapeles exclusivamente para validar esa key y, si funciona, guardarla en $HOME/.config/learnforce/.env. La key permite consultar tus cursos y gestionar tu progreso con tus permisos; permanece hasta eliminarla o revocarla en LearnForce. No se leerá ni guardará otro contenido.”
+10. Espera. La respuesta LISTO es la única confirmación necesaria: no vuelvas a pedir autorización.
 11. Tras recibirla, ejecuta `& (Join-Path $config 'lfkey.ps1') -ClipboardOnly`. El script valida la key contra la API antes de guardarla. Nunca muestres la llave. Considera éxito únicamente la salida `status: ok` y `api_verified: true`; no hagas una segunda verificación casera del texto del archivo.
 12. Si la API confirma la key, informa que LearnForce está lista para usar inmediatamente. No pidas reiniciar: ya leíste SKILL.md en esta sesión.
 13. Termina sugiriendo estos prompts:
    - “Usando LearnForce, recomiéndame las 5 mejores clases de Imperio Agéntico para aprender agentes de WhatsApp.”
    - “Usando LearnForce, dime cómo hacer [objetivo] según Imperio Agéntico.”
    - “Usando LearnForce, créame una ruta para aprender [tema] desde cero.”
-14. Si no autoriza el portapapeles, ofrece `lfkey` como alternativa privada.</code></pre>
+14. Si no autoriza el portapapeles, ofrece dos alternativas: ejecutar `lfkey` o guardar manualmente una línea `LEARN_FORCE_API_KEY=SU_LLAVE` en `$HOME/.config/learnforce/.env`. No pidas que comparta la llave en el chat.</code></pre>
           </div>
           <div class="agent-callout"><span>💡</span><p><strong>Después de instalar:</strong> reinicia el agente o abre una sesión nueva para que descubra la skill <code>learnforce</code>.</p></div>
 
@@ -173,13 +173,13 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
 
         <section class="agent-doc-section" id="autenticacion">
           <span class="agent-section-label">PASO 2 · API KEY</span>
-          <h2>Copia la llave y responde “LISTO Y AUTORIZO”</h2>
+          <h2>Copia la llave y responde “LISTO”</h2>
           <p>Tu agente mostrará tres pasos destacados. Esa única respuesta autoriza una lectura del portapapeles, la validación contra la API y el guardado seguro. No habrá una segunda confirmación.</p>
           <div class="agent-code-block">
             <div><span>Alternativa manual</span><button type="button" data-copy-target="envAgentKey">Copiar comando</button></div>
             <pre id="envAgentKey"><code>lfkey</code></pre>
           </div>
-          <div class="agent-callout"><span>✓</span><p>Sin autorización no se lee el portapapeles. También puedes usar <code>lfkey</code> para ingresarla de forma privada. Ambos métodos guardan en <code>$HOME/.config/learnforce/.env</code>.</p></div>
+          <div class="agent-callout"><span>✓</span><p>Sin autorización no se lee el portapapeles. Puedes usar <code>lfkey</code> o guardar manualmente <code>LEARN_FORCE_API_KEY=SU_LLAVE</code> en <code>$HOME/.config/learnforce/.env</code>.</p></div>
           <div class="agent-copy-field"><span>Base URL</span><code id="baseUrl">https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1</code><button type="button" data-copy-target="baseUrl">Copiar</button></div>
           <div class="agent-code-block">
             <div><span>Header requerido</span><button type="button" data-copy-target="authHeader">Copiar</button></div>
