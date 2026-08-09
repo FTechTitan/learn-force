@@ -231,10 +231,17 @@ async function keywordSearch(query: string, limit: number): Promise<SearchRow[]>
   return (data || []) as SearchRow[];
 }
 
-async function semanticSearch(embedding: number[], limit: number): Promise<SearchRow[]> {
+function hasLearningIntent(query: string): boolean {
+  return /\b(aprender|desde cero|comenzar|empezar|ruta|clases?|curso|estudiar)\b/i.test(query);
+}
+
+async function semanticSearch(
+  embedding: number[], limit: number, learningIntent: boolean,
+): Promise<SearchRow[]> {
   const { data, error: queryError } = await admin.rpc("search_course_documents_semantic", {
     p_embedding: embedding,
     p_limit: limit,
+    p_learning_intent: learningIntent,
   });
   if (queryError) throw queryError;
   return (data || []) as SearchRow[];
@@ -264,8 +271,9 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
   }
 
   const embedding = await queryEmbedding(query);
+  const learningIntent = hasLearningIntent(query);
   if (mode === "semantic") {
-    const rows = await semanticSearch(embedding, limit);
+    const rows = await semanticSearch(embedding, limit, learningIntent);
     return response(req, {
       data: rows.map((row) => searchResult(row)),
       meta: { mode, query, total: rows.length, semantic_used: true, indexed_documents: await indexedDocumentCount(), duration_ms: Math.round(performance.now() - startedAt) },
@@ -274,7 +282,7 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
 
   const [keywordRows, semanticRows] = await Promise.all([
     keywordSearch(query, Math.min(25, limit * 3)),
-    semanticSearch(embedding, Math.min(25, limit * 3)),
+    semanticSearch(embedding, Math.min(25, limit * 3), learningIntent),
   ]);
   const merged = new Map<string, SearchRow & { keyword_score: number; semantic_score: number }>();
   keywordRows.forEach((row, index) => {
