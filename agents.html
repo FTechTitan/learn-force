@@ -7,7 +7,7 @@
   <title>Conecta tu agente · TechForce Learn</title>
   <link rel="icon" href="assets/pwa/favicon-64.png" />
   <link rel="stylesheet" href="css/styles.css?v=20260809-agent-tabs-v2" />
-  <link rel="stylesheet" href="css/agents.css?v=20260809-macos-v2" />
+  <link rel="stylesheet" href="css/agents.css?v=20260809-os-switch-v1" />
 </head>
 <body class="agents-body">
   <header class="agents-topbar">
@@ -38,7 +38,6 @@
     </div>
 
     <div class="agents-layout hidden" id="agentsApp">
-      <aside class="agents-aside">
         <div class="agent-key-tools hidden" id="agentKeyTools">
         <div class="agent-panel agent-key-manager">
           <div class="agent-panel-head">
@@ -73,17 +72,6 @@
         </div>
         </div>
 
-        <nav class="agent-doc-nav" aria-label="Documentación">
-          <span>EN ESTA GUÍA</span>
-          <a href="#inicio">Inicio rápido</a>
-          <a href="#endpoints">Endpoints</a>
-          <a href="#busqueda">Búsqueda</a>
-          <a href="#clase-completa">Clase completa</a>
-          <a href="#progreso">Actualizar progreso</a>
-          <a href="#seguridad">Seguridad</a>
-        </nav>
-      </aside>
-
       <article class="agent-docs">
         <section class="agent-doc-section" id="inicio">
           <span class="agent-section-label">INICIO RÁPIDO</span>
@@ -107,7 +95,11 @@
           <h2>Pídele a tu agente que instale LearnForce</h2>
           <p>Copia esta instrucción completa en Codex o Claude Code. El agente detectará su carpeta de skills, descargará LearnForce con sus scripts y comprobará que quedó instalada.</p>
           <div class="agent-compatibility"><strong>✓ Funciona en Claude Code y Codex</strong><span>✕ No funciona en Claude Chat, Claude Cowork ni ChatGPT</span></div>
-          <div class="agent-code-block agent-install-prompt">
+          <div class="agent-os-switch" role="tablist" aria-label="Sistema operativo">
+            <button type="button" class="active" role="tab" aria-selected="true" data-agent-os="windows">⊞ Windows</button>
+            <button type="button" role="tab" aria-selected="false" data-agent-os="macos">● macOS</button>
+          </div>
+          <div class="agent-code-block agent-install-prompt" data-agent-os-panel="windows">
             <div><span>Windows · PowerShell</span><button type="button" data-copy-target="agentInstallPrompt">Copiar para Windows</button></div>
             <pre id="agentInstallPrompt"><code>Instala y configura la skill LearnForce en este equipo. Esta instalación sólo funciona en Claude Code y Codex; no funciona en Claude Chat, Claude Cowork ni ChatGPT. Si no estás en Claude Code o Codex, detente e infórmame. Ejecuta tú todos los comandos necesarios; no me entregues instrucciones para que yo cree carpetas o archivos. No leas el portapapeles sin avisarme, explicar el alcance y recibir mi autorización explícita.
 
@@ -154,7 +146,7 @@
    - “Usando LearnForce, créame una ruta para aprender [tema] desde cero.”
 14. Si no autoriza el portapapeles, ofrece dos alternativas: ejecutar `lfkey` o guardar manualmente una línea `LEARN_FORCE_API_KEY=SU_LLAVE` en `$HOME/.config/learnforce/.env`. No pidas que comparta la llave en el chat.</code></pre>
           </div>
-          <div class="agent-code-block agent-install-prompt">
+          <div class="agent-code-block agent-install-prompt" data-agent-os-panel="macos" hidden>
             <div><span>macOS · Terminal</span><button type="button" data-copy-target="agentInstallPromptMac">Copiar para macOS</button></div>
             <pre id="agentInstallPromptMac"><code>Instala y configura la skill LearnForce en este Mac usando únicamente herramientas nativas de macOS y descargas por HTTPS. No instales PowerShell, Homebrew, jq ni ninguna dependencia. Usa `/bin/sh`, `curl`, `pbpaste` y `osascript`. Sólo funciona en Claude Code y Codex; si no estás en una de esas aplicaciones, detente e infórmame. Ejecuta tú todos los comandos. No leas el portapapeles sin explicar antes el alcance y recibir mi autorización.
 
@@ -324,6 +316,6 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js?v=20260809-agent-portal"></script>
-  <script src="js/agents.js?v=20260809-macos-v2"></script>
+  <script src="js/agents.js?v=20260809-os-switch-v1"></script>
 </body>
 </html>

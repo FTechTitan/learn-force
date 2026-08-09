@@ -21,6 +21,17 @@
     keyTools.classList.toggle("hidden", tabName !== "key");
   }
 
+  function selectOperatingSystem(osName) {
+    document.querySelectorAll("[data-agent-os]").forEach((button) => {
+      const active = button.dataset.agentOs === osName;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    document.querySelectorAll("[data-agent-os-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.agentOsPanel !== osName;
+    });
+  }
+
   function escapeHtml(value) {
     const div = document.createElement("div");
     div.textContent = String(value ?? "");
@@ -112,6 +123,9 @@
   $("#refreshAgentKeys").addEventListener("click", loadKeys);
   document.querySelectorAll("[data-agent-tab]").forEach((button) => {
     button.addEventListener("click", () => selectWorkflowTab(button.dataset.agentTab));
+  });
+  document.querySelectorAll("[data-agent-os]").forEach((button) => {
+    button.addEventListener("click", () => selectOperatingSystem(button.dataset.agentOs));
   });
   document.querySelectorAll("[data-copy-target]").forEach((button) => {
     button.addEventListener("click", () => copyText($(`#${button.dataset.copyTarget}`).textContent.trim(), button));
