@@ -196,8 +196,23 @@ function normalizarCurso(row) {
       titulo: m.title,
       emoji: m.emoji || "📦",
       intro: m.intro || "",
+      overviewMarkdown: m.overview_markdown || "",
       teoria: m.theory || "",
       media: m.media || null,
+      clases: (m.course_lessons || [])
+        .filter((lesson) => lesson.is_published !== false)
+        .slice()
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id.localeCompare(b.id))
+        .map((lesson) => ({
+          id: lesson.id,
+          titulo: lesson.title,
+          lessonKind: lesson.lesson_kind || "lesson",
+          videoUrl: lesson.video_url || "",
+          videoProvider: lesson.video_provider || "",
+          videoDuration: lesson.video_duration || "",
+          videoThumbnailUrl: lesson.video_thumbnail_url || "",
+          hasTranscript: lesson.has_transcript === true,
+        })),
       ejercicios: (m.course_items || [])
         .filter((it) => it.is_published !== false)
         .slice()
@@ -249,10 +264,23 @@ const CursosRemotos = {
           title,
           emoji,
           intro,
+          overview_markdown,
           theory,
           media,
           is_published,
           sort_order,
+          course_lessons!course_lessons_module_course_fk (
+            id,
+            title,
+            lesson_kind,
+            video_url,
+            video_provider,
+            video_duration,
+            video_thumbnail_url,
+            has_transcript,
+            is_published,
+            sort_order
+          ),
           course_items!course_items_module_course_fk (
             id,
             type,
@@ -275,9 +303,67 @@ const CursosRemotos = {
       .eq("is_published", true)
       .order("sort_order", { ascending: true })
       .order("sort_order", { referencedTable: "course_modules", ascending: true })
+      .order("sort_order", { referencedTable: "course_modules.course_lessons", ascending: true })
       .order("sort_order", { referencedTable: "course_modules.course_items", ascending: true });
     if (error) throw error;
     return (data || []).map(normalizarCurso);
+  },
+};
+
+const LeccionesRemotas = {
+  async cargarDetalle(lessonId) {
+    const [contentResult, transcriptsResult, resourcesResult] = await Promise.all([
+      sb
+        .from("course_lesson_contents")
+        .select("body_markdown")
+        .eq("lesson_id", lessonId)
+        .maybeSingle(),
+      sb
+        .from("course_lesson_transcripts")
+        .select("id, language, transcript_text, storage_path, sort_order")
+        .eq("lesson_id", lessonId)
+        .order("sort_order", { ascending: true }),
+      sb
+        .from("course_lesson_resources")
+        .select("id, title, kind, mime_type, storage_path, file_size, sort_order")
+        .eq("lesson_id", lessonId)
+        .eq("is_published", true)
+        .order("sort_order", { ascending: true }),
+    ]);
+
+    if (contentResult.error) throw contentResult.error;
+    if (transcriptsResult.error) throw transcriptsResult.error;
+    if (resourcesResult.error) throw resourcesResult.error;
+
+    const storagePaths = [
+      ...(transcriptsResult.data || []).map((item) => item.storage_path),
+      ...(resourcesResult.data || []).map((item) => item.storage_path),
+    ].filter(Boolean);
+    const signedUrls = new Map();
+    await Promise.all(storagePaths.map(async (path) => {
+      const { data, error } = await sb.storage
+        .from("imperio-agentico-content")
+        .createSignedUrl(path, 3600);
+      if (!error && data?.signedUrl) signedUrls.set(path, data.signedUrl);
+    }));
+
+    return {
+      bodyMarkdown: contentResult.data?.body_markdown || "",
+      transcripts: (transcriptsResult.data || []).map((item) => ({
+        id: item.id,
+        language: item.language,
+        text: item.transcript_text || "",
+        downloadUrl: signedUrls.get(item.storage_path) || "",
+      })),
+      resources: (resourcesResult.data || []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        kind: item.kind,
+        mimeType: item.mime_type || "",
+        fileSize: item.file_size || 0,
+        downloadUrl: signedUrls.get(item.storage_path) || "",
+      })),
+    };
   },
 };
 
@@ -286,3 +372,4 @@ window.ProgresoRemoto = ProgresoRemoto;
 window.PushSubscriptions = PushSubscriptions;
 window.AccesoCursos = AccesoCursos;
 window.CursosRemotos = CursosRemotos;
+window.LeccionesRemotas = LeccionesRemotas;

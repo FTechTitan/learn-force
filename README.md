@@ -63,6 +63,28 @@ estructura en `course_items`:
 La corrección verifica que la **salida contenga** cada string de `expect`, en
 orden, ignorando mayúsculas/acentos y espacios extra.
 
+## Importar el vault de Imperio Agéntico
+
+El importador conserva el orden del índice de Obsidian y relaciona cada lección
+con su Markdown, video YouTube/Loom, transcripciones SRT y adjuntos. Por defecto
+solo audita; nunca escribe en Supabase sin `--apply`.
+
+```powershell
+# Auditoría completa y manifiesto en tmp/ (ignorado por Git)
+python scripts/import_imperio_vault.py `
+  --vault C:/obsidian/vault-imperio-agentico-skool
+
+# Aplicación, después de autenticar y enlazar Supabase CLI
+supabase login --name learn-force-windows
+supabase link --project-ref bipsvhxsvfzfwzufucfg
+python scripts/import_imperio_vault.py --apply
+```
+
+La aplicación usa exclusivamente la sesión del CLI y el proyecto enlazado; no
+requiere service keys ni secretos en variables de entorno. Los archivos se suben
+al bucket privado `imperio-agentico-content`; el frontend entrega enlaces firmados
+solo a usuarios con acceso aprobado.
+
 ## Deploy a Cloudflare Pages
 
 Proyecto estático sin build:

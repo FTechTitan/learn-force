@@ -8,3 +8,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated import reports (never commit vault content)
+tmp/
