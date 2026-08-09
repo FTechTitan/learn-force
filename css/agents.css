@@ -15,6 +15,7 @@
 .agents-capabilities span { padding: 7px 11px; border: 1px solid var(--border); border-radius: 99px; color: #b8c2d7; background: rgba(28,32,48,.72); font-size: 12px; font-weight: 700; }
 .agents-layout { display: grid; grid-template-columns: 355px minmax(0,1fr); gap: 56px; align-items: start; }
 .agents-aside { position: sticky; top: 94px; display: grid; gap: 16px; }
+.agent-key-tools { display: grid; gap: 16px; }
 .agent-panel { padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: rgba(28,32,48,.86); box-shadow: 0 18px 45px rgba(0,0,0,.16); }
 .agent-panel-head { display: flex; align-items: flex-start; gap: 12px; }
 .agent-step { display: grid; flex: 0 0 30px; height: 30px; place-items: center; border-radius: 8px; color: #07101d; background: var(--py-yellow); font-weight: 900; }
@@ -47,6 +48,16 @@
 .agent-doc-section + .agent-doc-section { padding-top: 54px; border-top: 1px solid var(--border); }
 .agent-doc-section h2 { margin: 8px 0 12px; font-size: clamp(27px, 3vw, 38px); line-height: 1.15; letter-spacing: -1px; }
 .agent-doc-section > p { max-width: 760px; color: var(--text-dim); font-size: 15px; line-height: 1.7; }
+.agent-workflow-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: 0 0 36px; padding: 6px; border: 1px solid var(--border); border-radius: 14px; background: rgba(12,14,20,.72); }
+.agent-workflow-tab { display: grid; grid-template-columns: 30px 1fr; gap: 1px 10px; align-items: center; min-width: 0; padding: 13px; border: 1px solid transparent; border-radius: 10px; color: var(--text-dim); background: transparent; text-align: left; cursor: pointer; }
+.agent-workflow-tab > span { display: grid; grid-row: 1 / 3; width: 30px; height: 30px; place-items: center; border-radius: 8px; color: #9aa7bc; background: var(--bg-soft); font-size: 12px; font-weight: 900; }
+.agent-workflow-tab strong { overflow: hidden; color: #c4cede; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.agent-workflow-tab small { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.agent-workflow-tab:hover { background: rgba(28,32,48,.72); }
+.agent-workflow-tab.active { border-color: rgba(75,139,190,.6); background: #172331; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
+.agent-workflow-tab.active > span { color: #07101d; background: var(--py-yellow); }
+.agent-workflow-tab.active strong { color: var(--text); }
+.agent-tab-panel[hidden] { display: none; }
 .agent-install-prompt { border-color: rgba(75,139,190,.55); box-shadow: 0 14px 35px rgba(0,0,0,.14); }
 .agent-install-prompt pre { white-space: pre-wrap; }
 .agent-manual-install { margin-top: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 11px; background: rgba(28,32,48,.5); }
@@ -103,4 +114,4 @@
 .agents-auth-gate .btn { margin-left: auto; }
 .agents-auth-icon { font-size: 30px; }
 @media (max-width: 900px) { .agents-layout { grid-template-columns: 1fr; } .agents-aside { position: static; } .agent-doc-nav { display: none; } }
-@media (max-width: 640px) { .agents-shell { width: min(100% - 24px,1240px); padding-top: 40px; } .agents-topbar { padding: 12px; } .agents-session { display: none; } .agents-hero h1 { letter-spacing: -2px; } .agent-steps, .agent-response-map, .agent-security-grid, .agent-search-modes { grid-template-columns: 1fr; } .agent-endpoint-list > div { grid-template-columns: 42px minmax(0,1fr); } .agent-endpoint-list p { grid-column: 2; } .agent-copy-field { grid-template-columns: 1fr auto; } .agent-copy-field span { grid-column: 1 / 3; } .agents-auth-gate { align-items: flex-start; flex-wrap: wrap; } .agents-auth-gate .btn { width: 100%; margin-left: 0; } }
+@media (max-width: 640px) { .agents-shell { width: min(100% - 24px,1240px); padding-top: 40px; } .agents-topbar { padding: 12px; } .agents-session { display: none; } .agents-hero h1 { letter-spacing: -2px; } .agent-steps, .agent-response-map, .agent-security-grid, .agent-search-modes { grid-template-columns: 1fr; } .agent-workflow-tabs { gap: 4px; padding: 4px; } .agent-workflow-tab { grid-template-columns: 1fr; justify-items: center; padding: 9px 5px; text-align: center; } .agent-workflow-tab > span { grid-row: auto; margin-bottom: 4px; } .agent-workflow-tab strong { white-space: normal; font-size: 11px; line-height: 1.2; } .agent-workflow-tab small { display: none; } .agent-endpoint-list > div { grid-template-columns: 42px minmax(0,1fr); } .agent-endpoint-list p { grid-column: 2; } .agent-copy-field { grid-template-columns: 1fr auto; } .agent-copy-field span { grid-column: 1 / 3; } .agents-auth-gate { align-items: flex-start; flex-wrap: wrap; } .agents-auth-gate .btn { width: 100%; margin-left: 0; } }

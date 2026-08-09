@@ -7,6 +7,19 @@
   const authGate = $("#agentsAuthGate");
   const errorEl = $("#agentKeysError");
   const listEl = $("#agentKeyList");
+  const keyTools = $("#agentKeyTools");
+
+  function selectWorkflowTab(tabName) {
+    document.querySelectorAll("[data-agent-tab]").forEach((button) => {
+      const active = button.dataset.agentTab === tabName;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    document.querySelectorAll("[data-agent-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.agentPanel !== tabName;
+    });
+    keyTools.classList.toggle("hidden", tabName !== "key");
+  }
 
   function escapeHtml(value) {
     const div = document.createElement("div");
@@ -97,6 +110,9 @@
 
   $("#copyAgentKey").addEventListener("click", (event) => copyText($("#agentKeyValue").textContent, event.currentTarget));
   $("#refreshAgentKeys").addEventListener("click", loadKeys);
+  document.querySelectorAll("[data-agent-tab]").forEach((button) => {
+    button.addEventListener("click", () => selectWorkflowTab(button.dataset.agentTab));
+  });
   document.querySelectorAll("[data-copy-target]").forEach((button) => {
     button.addEventListener("click", () => copyText($(`#${button.dataset.copyTarget}`).textContent.trim(), button));
   });
