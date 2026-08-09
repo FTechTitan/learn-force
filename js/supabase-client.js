@@ -369,9 +369,39 @@ const LeccionesRemotas = {
   },
 };
 
+// ---------------------------------------------------------------------------
+//  Claves personales para agentes
+// ---------------------------------------------------------------------------
+const AGENT_API_URL = `${SUPABASE_URL}/functions/v1/courses-api/v1`;
+const AgentApi = {
+  async request(path, { method = "GET", body } = {}) {
+    const { data } = await sb.auth.getSession();
+    const accessToken = data?.session?.access_token;
+    if (!accessToken) throw new Error("Inicia sesión para administrar tus agentes.");
+    const res = await fetch(`${AGENT_API_URL}${path}`, {
+      method,
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 204) return null;
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error?.message || `Error API (${res.status})`);
+    return payload;
+  },
+  listarClaves() { return AgentApi.request("/api-keys"); },
+  crearClave(name, expiresAt) {
+    return AgentApi.request("/api-keys", { method: "POST", body: { name, ...(expiresAt ? { expires_at: expiresAt } : {}) } });
+  },
+  revocarClave(id) { return AgentApi.request(`/api-keys/${encodeURIComponent(id)}`, { method: "DELETE" }); },
+};
+
 window.Auth = Auth;
 window.ProgresoRemoto = ProgresoRemoto;
 window.PushSubscriptions = PushSubscriptions;
 window.AccesoCursos = AccesoCursos;
 window.CursosRemotos = CursosRemotos;
 window.LeccionesRemotas = LeccionesRemotas;
+window.AgentApi = AgentApi;
