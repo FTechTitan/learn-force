@@ -50,9 +50,16 @@ GET /courses/{course_id}/modules/{module_id}/lessons
 GET /courses/{course_id}/modules/{module_id}/lessons/{lesson_id}
 GET /progress
 PUT /progress/{item_id}
+POST /search/keyword
+POST /search/semantic
+POST /search/hybrid
 ```
 
 La consulta de una clase devuelve en una sola respuesta `body_markdown`, `transcripts` y `resources`, además de sus metadatos y video.
+
+### Búsqueda
+
+Los tres endpoints aceptan `{ "query": "...", "limit": 10 }` y devuelven la misma estructura. `keyword` usa solo Full Text Search; `semantic` genera un embedding; `hybrid` combina ambos rankings. El piloto inicial indexa únicamente título, resumen, curso y módulo de 28 clases de WhatsApp.
 
 Actualizar progreso:
 

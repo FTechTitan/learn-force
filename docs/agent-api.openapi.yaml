@@ -100,6 +100,30 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "422": { $ref: "#/components/responses/ValidationError" }
+  /search/keyword:
+    post:
+      operationId: searchCoursesByKeyword
+      summary: Busca clases por palabras clave sin ejecutar un modelo
+      requestBody: { $ref: "#/components/requestBodies/SearchRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /search/semantic:
+    post:
+      operationId: searchCoursesByMeaning
+      summary: Busca clases por similitud semántica
+      requestBody: { $ref: "#/components/requestBodies/SearchRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /search/hybrid:
+    post:
+      operationId: searchCoursesHybrid
+      summary: Combina búsqueda por palabras y significado
+      requestBody: { $ref: "#/components/requestBodies/SearchRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
   /api-keys:
     get:
       operationId: listApiKeys
@@ -138,6 +162,17 @@ paths:
         "204": { description: Clave revocada }
         "404": { $ref: "#/components/responses/NotFound" }
 components:
+  requestBodies:
+    SearchRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [query]
+            properties:
+              query: { type: string, minLength: 2, maxLength: 500 }
+              limit: { type: integer, minimum: 1, maximum: 25, default: 10 }
   securitySchemes:
     personalApiKey:
       type: apiKey

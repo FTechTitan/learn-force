@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -144,6 +144,149 @@ async function signedDownload(path: string | null) {
   return data?.signedUrl || null;
 }
 
+type SearchRow = {
+  lesson_id: string;
+  course_id: string;
+  module_id: string;
+  course_title: string;
+  module_title: string;
+  title: string;
+  summary: string;
+  score: number;
+};
+
+function searchLimit(value: unknown): number {
+  const parsed = Number(value || 10);
+  return Number.isFinite(parsed) ? Math.min(25, Math.max(1, Math.trunc(parsed))) : 10;
+}
+
+function searchResult(row: SearchRow, score = row.score) {
+  return {
+    lesson_id: row.lesson_id,
+    course_id: row.course_id,
+    module_id: row.module_id,
+    course: row.course_title,
+    module: row.module_title,
+    title: row.title,
+    summary: row.summary,
+    score: Math.round(Number(score || 0) * 10_000) / 10_000,
+    next_action: {
+      method: "GET",
+      path: `/courses/${row.course_id}/modules/${row.module_id}/lessons/${row.lesson_id}`,
+    },
+    web_url: `https://learn.techforce.cl/#curso/${row.course_id}/${row.module_id}/clase/${row.lesson_id}`,
+  };
+}
+
+async function queryEmbedding(text: string): Promise<number[]> {
+  const aiGlobal = (globalThis as unknown as {
+    Supabase: { ai: { Session: new (model: string) => { run: (input: string, options: Record<string, boolean>) => Promise<ArrayLike<number>> } } };
+  }).Supabase;
+  if (!aiGlobal?.ai?.Session) throw new Error("Supabase AI no está disponible en este runtime.");
+  const model = new aiGlobal.ai.Session("gte-small");
+  const output = await model.run(text, { mean_pool: true, normalize: true });
+  return Array.from(output);
+}
+
+async function keywordSearch(query: string, limit: number): Promise<SearchRow[]> {
+  const { data, error: queryError } = await admin.rpc("search_course_documents_keyword", {
+    p_query: query,
+    p_limit: limit,
+  });
+  if (queryError) throw queryError;
+  return (data || []) as SearchRow[];
+}
+
+async function semanticSearch(embedding: number[], limit: number): Promise<SearchRow[]> {
+  const { data, error: queryError } = await admin.rpc("search_course_documents_semantic", {
+    p_embedding: embedding,
+    p_limit: limit,
+  });
+  if (queryError) throw queryError;
+  return (data || []) as SearchRow[];
+}
+
+async function indexedDocumentCount(): Promise<number> {
+  const { count } = await admin.from("course_search_documents")
+    .select("lesson_id", { count: "exact", head: true }).not("embedding", "is", null);
+  return count || 0;
+}
+
+async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "semantic" | "hybrid") {
+  const startedAt = performance.now();
+  const body = await parseBody(req);
+  const query = String(body?.query || "").trim();
+  const limit = searchLimit(body?.limit);
+  if (query.length < 2 || query.length > 500) {
+    return error(req, 422, "validation_error", "query debe tener entre 2 y 500 caracteres.");
+  }
+
+  if (mode === "keyword") {
+    const rows = await keywordSearch(query, limit);
+    return response(req, {
+      data: rows.map((row) => searchResult(row)),
+      meta: { mode, query, total: rows.length, semantic_used: false, duration_ms: Math.round(performance.now() - startedAt) },
+    });
+  }
+
+  const embedding = await queryEmbedding(query);
+  if (mode === "semantic") {
+    const rows = await semanticSearch(embedding, limit);
+    return response(req, {
+      data: rows.map((row) => searchResult(row)),
+      meta: { mode, query, total: rows.length, semantic_used: true, indexed_documents: await indexedDocumentCount(), duration_ms: Math.round(performance.now() - startedAt) },
+    });
+  }
+
+  const [keywordRows, semanticRows] = await Promise.all([
+    keywordSearch(query, Math.min(25, limit * 3)),
+    semanticSearch(embedding, Math.min(25, limit * 3)),
+  ]);
+  const maxKeyword = Math.max(...keywordRows.map((row) => Number(row.score || 0)), 0.0001);
+  const merged = new Map<string, SearchRow & { keyword_score: number; semantic_score: number }>();
+  keywordRows.forEach((row) => merged.set(row.lesson_id, { ...row, keyword_score: Number(row.score || 0) / maxKeyword, semantic_score: 0 }));
+  semanticRows.forEach((row) => {
+    const current = merged.get(row.lesson_id);
+    if (current) current.semantic_score = Math.max(0, Number(row.score || 0));
+    else merged.set(row.lesson_id, { ...row, keyword_score: 0, semantic_score: Math.max(0, Number(row.score || 0)) });
+  });
+  const rows = [...merged.values()]
+    .map((row) => ({ ...row, combined_score: row.keyword_score * 0.45 + row.semantic_score * 0.55 }))
+    .sort((a, b) => b.combined_score - a.combined_score)
+    .slice(0, limit);
+  return response(req, {
+    data: rows.map((row) => ({ ...searchResult(row, row.combined_score), keyword_score: Math.round(row.keyword_score * 10_000) / 10_000, semantic_score: Math.round(row.semantic_score * 10_000) / 10_000 })),
+    meta: { mode, query, total: rows.length, semantic_used: true, indexed_documents: await indexedDocumentCount(), duration_ms: Math.round(performance.now() - startedAt) },
+  });
+}
+
+async function indexSmokeBatch(req: Request, auth: AuthContext) {
+  if (!auth.isAdmin || auth.method !== "jwt") return error(req, 403, "admin_required", "Solo un administrador puede generar el índice piloto.");
+  const body = await parseBody(req);
+  const limit = Math.min(8, Math.max(1, Number(body?.limit || 8)));
+  const { data: documents, error: selectError } = await admin.from("course_search_documents")
+    .select("lesson_id, search_text").is("embedding", null).order("lesson_id").limit(limit);
+  if (selectError) throw selectError;
+  const indexed: string[] = [];
+  const failed: string[] = [];
+  for (const document of documents || []) {
+    try {
+      const embedding = await queryEmbedding(document.search_text);
+      const { error: updateError } = await admin.from("course_search_documents")
+        .update({ embedding, embedded_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("lesson_id", document.lesson_id);
+      if (updateError) throw updateError;
+      indexed.push(document.lesson_id);
+    } catch (caught) {
+      console.error("index-smoke", document.lesson_id, caught instanceof Error ? caught.message : caught);
+      failed.push(document.lesson_id);
+    }
+  }
+  const { count: remaining } = await admin.from("course_search_documents")
+    .select("lesson_id", { count: "exact", head: true }).is("embedding", null);
+  return response(req, { data: { indexed: indexed.length, failed: failed.length, remaining: remaining || 0 }, meta: { smoke: true, max_batch: 8 } });
+}
+
 async function route(req: Request, auth: AuthContext, parts: string[]) {
   if (req.method === "GET" && parts.length === 1 && parts[0] === "me") {
     return response(req, { data: { id: auth.userId, email: auth.email, auth_method: auth.method } });
@@ -188,6 +331,14 @@ async function route(req: Request, auth: AuthContext, parts: string[]) {
   }
 
   if (!(await hasCatalogAccess(auth))) return error(req, 403, "course_access_required", "El usuario no tiene acceso aprobado al catálogo.");
+
+  if (req.method === "POST" && parts.length === 2 && parts[0] === "search" && parts[1] === "index-smoke") {
+    return indexSmokeBatch(req, auth);
+  }
+
+  if (req.method === "POST" && parts.length === 2 && parts[0] === "search" && ["keyword", "semantic", "hybrid"].includes(parts[1])) {
+    return searchRoute(req, auth, parts[1] as "keyword" | "semantic" | "hybrid");
+  }
 
   if (req.method === "GET" && parts.length === 1 && parts[0] === "courses") {
     const { data, error: queryError } = await admin.from("courses")

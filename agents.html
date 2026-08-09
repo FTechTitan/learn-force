@@ -76,6 +76,7 @@
           <a href="#inicio">Inicio rápido</a>
           <a href="#autenticacion">Autenticación</a>
           <a href="#endpoints">Endpoints</a>
+          <a href="#busqueda">Búsqueda</a>
           <a href="#clase-completa">Clase completa</a>
           <a href="#progreso">Actualizar progreso</a>
           <a href="#seguridad">Seguridad</a>
@@ -118,6 +119,27 @@
             <div><span class="method get">GET</span><code>/courses/{courseId}/modules/{moduleId}/lessons/{lessonId}</code><p>Obtener la clase completa</p></div>
             <div><span class="method get">GET</span><code>/progress</code><p>Consultar el progreso</p></div>
             <div><span class="method put">PUT</span><code>/progress/{itemId}</code><p>Marcar avance o guardar una respuesta</p></div>
+            <div><span class="method post">POST</span><code>/search/keyword</code><p>Búsqueda económica por palabras</p></div>
+            <div><span class="method post">POST</span><code>/search/semantic</code><p>Búsqueda por significado</p></div>
+            <div><span class="method post">POST</span><code>/search/hybrid</code><p>Combinar palabras y significado</p></div>
+          </div>
+        </section>
+
+        <section class="agent-doc-section" id="busqueda">
+          <span class="agent-section-label">BÚSQUEDA BETA</span>
+          <h2>Encuentra qué estudiar según tu intención</h2>
+          <p>Los tres modos comparten la misma entrada y respuesta. El piloto actual usa contexto liviano de las clases de WhatsApp; no indexa transcripciones.</p>
+          <div class="agent-code-block">
+            <div><span>Buscar por palabras clave</span><button type="button" data-copy-target="searchCurl">Copiar</button></div>
+            <pre id="searchCurl"><code>curl -X POST "$BASE_URL/search/keyword" \
+  -H "X-API-Key: $LEARN_FORCE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"quiero aprender agentes de WhatsApp","limit":5}'</code></pre>
+          </div>
+          <div class="agent-search-modes">
+            <div><strong>keyword</strong><span>Más barato</span><p>PostgreSQL Full Text Search. No ejecuta modelos.</p></div>
+            <div><strong>semantic</strong><span>Más flexible</span><p>Interpreta el significado mediante embeddings.</p></div>
+            <div><strong>hybrid</strong><span>Mejor ranking</span><p>Combina ambas listas en una respuesta.</p></div>
           </div>
         </section>
 
