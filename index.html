@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css" />
 
-  <link rel="stylesheet" href="css/styles.css?v=20260809-imperio-content" />
+  <link rel="stylesheet" href="css/styles.css?v=20260809-email-auth" />
 </head>
 <body>
   <header class="topbar">
@@ -38,7 +38,7 @@
       </div>
       <button class="btn btn-secondary btn-sm notify-btn hidden" id="btnNotifications" type="button">Activar notificaciones</button>
       <div class="auth-area" id="authArea">
-        <button class="btn btn-secondary btn-sm" id="btnLogin">Entrar con Google</button>
+        <button class="btn btn-secondary btn-sm" id="btnLogin">Iniciar sesión</button>
         <div class="user-chip hidden" id="userChip">
           <span class="user-email" id="userEmail"></span>
           <button class="btn-mini" id="btnLogout">Salir</button>
@@ -51,9 +51,23 @@
   <div class="modal-overlay hidden" id="authModal">
     <div class="modal">
       <button class="modal-close" id="authClose" aria-label="Cerrar">✕</button>
-      <h2 id="authTitulo">Entrá con Google</h2>
-      <p class="modal-sub">Usa tu cuenta Google para responder ejercicios y guardar tu avance.</p>
+      <h2 id="authTitulo">Iniciar sesión</h2>
+      <p class="modal-sub" id="authSubtitulo">Usa tu correo o tu cuenta Google para guardar tu avance.</p>
       <p class="auth-error hidden" id="authError"></p>
+      <form id="authForm">
+        <label>Correo
+          <input type="email" id="authEmail" autocomplete="email" required />
+        </label>
+        <label>Contraseña
+          <input type="password" id="authPassword" autocomplete="current-password" minlength="6" required />
+        </label>
+        <button type="submit" class="btn btn-primary btn-block" id="btnEmailAuth">Entrar</button>
+      </form>
+      <p class="auth-toggle">
+        <span id="authToggleText">¿No tienes cuenta?</span>
+        <a href="#" id="authToggle">Crear una</a>
+      </p>
+      <div class="auth-divider">o</div>
       <button type="button" class="btn-google" id="btnGoogleLogin">
         <span class="google-mark">G</span>
         <span>Continuar con Google</span>
@@ -202,7 +216,7 @@
   <!-- App -->
   <script src="js/runner.js?v=20260809-imperio-content"></script>
   <script src="js/supabase-client.js?v=20260809-imperio-content"></script>
-  <script src="js/auth-ui.js?v=20260730-access-requests"></script>
+  <script src="js/auth-ui.js?v=20260809-email-auth"></script>
   <script src="js/app.js?v=20260809-imperio-content"></script>
   <script src="js/assistant.js?v=20260730-access-requests"></script>
   <script src="js/admin.js?v=20260730-access-requests"></script>

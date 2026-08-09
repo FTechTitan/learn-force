@@ -1,5 +1,5 @@
 // ============================================================================
-//  auth-ui.js — UI de autenticación (modal Google + chip de usuario)
+//  auth-ui.js — UI de autenticación (correo, Google y chip de usuario)
 //  Expone window.AuthUI con:
 //    - onUsuario(cb)  -> se llama cada vez que cambia la sesión (user | null)
 //    - abrir()        -> abre el modal de login
@@ -17,11 +17,30 @@
   const modal = $("#authModal");
   const errorEl = $("#authError");
   const googleBtn = $("#btnGoogleLogin");
+  const form = $("#authForm");
+  const emailInput = $("#authEmail");
+  const passwordInput = $("#authPassword");
+  const emailBtn = $("#btnEmailAuth");
+  let modoRegistro = false;
+
+  function configurarModo(registro) {
+    modoRegistro = registro;
+    $("#authTitulo").textContent = registro ? "Crear cuenta" : "Iniciar sesión";
+    $("#authSubtitulo").textContent = registro
+      ? "Crea una cuenta con correo y contraseña para guardar tu avance."
+      : "Usa tu correo o tu cuenta Google para guardar tu avance.";
+    emailBtn.textContent = registro ? "Crear cuenta" : "Entrar";
+    $("#authToggleText").textContent = registro ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?";
+    $("#authToggle").textContent = registro ? "Iniciar sesión" : "Crear una";
+    passwordInput.autocomplete = registro ? "new-password" : "current-password";
+    errorEl.classList.add("hidden");
+  }
 
   function abrir() {
+    configurarModo(false);
     errorEl.classList.add("hidden");
     modal.classList.remove("hidden");
-    setTimeout(() => googleBtn.focus(), 50);
+    setTimeout(() => emailInput.focus(), 50);
   }
   function cerrar() {
     modal.classList.add("hidden");
@@ -36,6 +55,10 @@
   function traducirError(e) {
     const m = (e && e.message) || String(e);
     if (/rate limit/i.test(m)) return "Demasiados intentos. Esperá un momento.";
+    if (/invalid login credentials/i.test(m)) return "El correo o la contraseña no son correctos.";
+    if (/email not confirmed/i.test(m)) return "Confirma tu correo antes de iniciar sesión.";
+    if (/user already registered/i.test(m)) return "Ya existe una cuenta con ese correo.";
+    if (/password should be at least/i.test(m)) return "La contraseña debe tener al menos 6 caracteres.";
     if (/redirect_uri_mismatch/i.test(m)) return "La configuración de Google está rechazando el callback. Probá de nuevo en un momento.";
     return m;
   }
@@ -68,6 +91,36 @@
     $("#btnLogin").addEventListener("click", abrir);
     $("#authClose").addEventListener("click", cerrar);
     modal.addEventListener("click", (e) => { if (e.target === modal) cerrar(); });
+
+    $("#authToggle").addEventListener("click", (e) => {
+      e.preventDefault();
+      configurarModo(!modoRegistro);
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.classList.add("hidden");
+      emailBtn.disabled = true;
+      emailBtn.textContent = modoRegistro ? "Creando…" : "Entrando…";
+      try {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const user = modoRegistro
+          ? await window.Auth.registrar(email, password)
+          : await window.Auth.entrar(email, password);
+        if (modoRegistro && !user) {
+          mostrarError("Revisa tu correo para confirmar la cuenta antes de entrar.");
+          return;
+        }
+        cerrar();
+        form.reset();
+      } catch (err) {
+        mostrarError(traducirError(err));
+      } finally {
+        emailBtn.disabled = false;
+        emailBtn.textContent = modoRegistro ? "Crear cuenta" : "Entrar";
+      }
+    });
 
     $("#btnLogout").addEventListener("click", async () => {
       await window.Auth.salir();
