@@ -1139,47 +1139,20 @@
       </div>`;
   }
 
-  function activarTabsLeccion(container) {
-    const buttons = [...container.querySelectorAll("[data-lesson-tab]")];
-    const panels = [...container.querySelectorAll("[data-lesson-panel]")];
-    buttons.forEach((button) => {
-      button.addEventListener("click", () => {
-        const target = button.dataset.lessonTab;
-        buttons.forEach((item) => {
-          const active = item === button;
-          item.classList.toggle("active", active);
-          item.setAttribute("aria-selected", String(active));
-        });
-        panels.forEach((panel) => panel.classList.toggle("hidden", panel.dataset.lessonPanel !== target));
-      });
-    });
-  }
-
   function renderDetalleLeccion(container, clase, detalle) {
-    const tabs = [];
-    if (clase.videoUrl) tabs.push({ id: "video", label: "Video", html: renderVideoLeccion(clase) });
-    if (detalle.bodyMarkdown) {
-      tabs.push({ id: "contenido", label: "Contenido", html: `<article class="lesson-markdown">${renderMarkdownSeguro(detalle.bodyMarkdown)}</article>` });
-    }
-    if (detalle.transcripts.length) {
-      tabs.push({
-        id: "transcripcion",
-        label: `Transcripción (${detalle.transcripts.length})`,
-        html: detalle.transcripts.map((track, index) => `
-          <details class="lesson-transcript"${index === 0 ? " open" : ""}>
-            <summary>${escaparHtml(etiquetaIdioma(track.language))}</summary>
-            <div class="lesson-transcript-actions">
-              ${track.downloadUrl ? `<a class="media-pres-link" href="${escaparHtml(track.downloadUrl)}" download>Descargar SRT original</a>` : ""}
-            </div>
-            <div class="lesson-transcript-text">${escaparHtml(track.text).replace(/\n\n/g, "</p><p>").replace(/^/, "<p>").replace(/$/, "</p>")}</div>
-          </details>`).join(""),
-      });
-    }
-    if (detalle.resources.length) {
-      tabs.push({
-        id: "recursos",
-        label: `Recursos (${detalle.resources.length})`,
-        html: `<div class="lesson-resource-list">${detalle.resources.map((resource) => `
+    const video = clase.videoUrl ? `
+      <section class="lesson-flow-section lesson-video-section">
+        ${renderVideoLeccion(clase)}
+      </section>` : "";
+    const contenido = detalle.bodyMarkdown ? `
+      <section class="lesson-flow-section">
+        <div class="lesson-section-heading"><span>Apuntes de la clase</span></div>
+        <article class="lesson-markdown">${renderMarkdownSeguro(detalle.bodyMarkdown)}</article>
+      </section>` : "";
+    const recursos = detalle.resources.length ? `
+      <section class="lesson-flow-section lesson-resources-section">
+        <div class="lesson-section-heading"><span>Recursos para esta clase</span><small>${detalle.resources.length} ${detalle.resources.length === 1 ? "archivo" : "archivos"}</small></div>
+        <div class="lesson-resource-list">${detalle.resources.map((resource) => `
           <article class="lesson-resource-card">
             <div>
               <span class="class-resource-kind">${escaparHtml(resource.kind)}</span>
@@ -1187,23 +1160,30 @@
               <small>${escaparHtml(resource.mimeType)} · ${formatoBytes(resource.fileSize)}</small>
             </div>
             ${resource.downloadUrl ? `<a class="media-pres-link" href="${escaparHtml(resource.downloadUrl)}" download>Descargar</a>` : `<span class="resource-unavailable">No disponible</span>`}
-          </article>`).join("")}</div>`,
-      });
-    }
+          </article>`).join("")}</div>
+      </section>` : "";
+    const transcripciones = detalle.transcripts.length ? `
+      <section class="lesson-flow-section lesson-transcripts-section">
+        <details class="lesson-transcript-group">
+          <summary><span>Ver transcripción completa</span><small>${detalle.transcripts.length} ${detalle.transcripts.length === 1 ? "versión" : "versiones"}</small></summary>
+          <div class="lesson-transcript-group-body">
+            ${detalle.transcripts.map((track) => `
+              <details class="lesson-transcript">
+                <summary>${escaparHtml(etiquetaIdioma(track.language))}</summary>
+                <div class="lesson-transcript-actions">
+                  ${track.downloadUrl ? `<a class="media-pres-link" href="${escaparHtml(track.downloadUrl)}" download>Descargar SRT original</a>` : ""}
+                </div>
+                <div class="lesson-transcript-text">${escaparHtml(track.text).replace(/\n\n/g, "</p><p>").replace(/^/, "<p>").replace(/$/, "</p>")}</div>
+              </details>`).join("")}
+          </div>
+        </details>
+      </section>` : "";
 
-    if (!tabs.length) {
+    if (!video && !contenido && !recursos && !transcripciones) {
       container.innerHTML = `<p class="lesson-empty">Esta lección no tiene contenido publicado.</p>`;
       return;
     }
-    const selected = tabs[0].id;
-    container.innerHTML = `
-      <section class="lesson-tabs">
-        <div class="lesson-tab-list" role="tablist" aria-label="Contenido de la lección">
-          ${tabs.map((tab) => `<button type="button" role="tab" data-lesson-tab="${tab.id}" aria-selected="${tab.id === selected}" class="lesson-tab-button${tab.id === selected ? " active" : ""}">${tab.label}</button>`).join("")}
-        </div>
-        ${tabs.map((tab) => `<div role="tabpanel" data-lesson-panel="${tab.id}" class="lesson-tab-panel${tab.id === selected ? "" : " hidden"}">${tab.html}</div>`).join("")}
-      </section>`;
-    activarTabsLeccion(container);
+    container.innerHTML = `<div class="lesson-flow">${video}${contenido}${recursos}${transcripciones}</div>`;
   }
 
   async function abrirClaseMedia(moduloId, classId) {

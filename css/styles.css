@@ -1079,21 +1079,15 @@ audio.media-el { height: 44px; background: var(--bg-soft); }
 }
 .media-pres-link:hover { border-color: var(--py-yellow); }
 
-.lesson-tabs { display: grid; gap: 18px; padding: 18px 0 10px; }
-.lesson-tab-list {
-  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px;
-  scrollbar-width: thin;
+.lesson-flow { display: grid; gap: 22px; padding: 18px 0 10px; }
+.lesson-flow-section { min-width: 0; }
+.lesson-flow-section + .lesson-flow-section { padding-top: 22px; border-top: 1px solid var(--border); }
+.lesson-section-heading {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin-bottom: 14px;
 }
-.lesson-tab-button {
-  flex: 0 0 auto; padding: 9px 14px; border: 1px solid var(--border);
-  border-radius: 99px; background: var(--bg-soft); color: var(--text-dim);
-  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
-}
-.lesson-tab-button:hover { border-color: var(--py-blue-light); color: var(--text); }
-.lesson-tab-button.active {
-  color: #07101d; border-color: var(--py-blue-light); background: var(--py-blue-light);
-}
-.lesson-tab-panel { min-width: 0; }
+.lesson-section-heading span { color: var(--text); font-size: 18px; font-weight: 800; }
+.lesson-section-heading small { color: var(--text-dim); }
 .lesson-markdown { line-height: 1.72; overflow-wrap: anywhere; }
 .lesson-markdown > :first-child { margin-top: 0; }
 .lesson-markdown img { max-width: 100%; height: auto; border-radius: 10px; }
@@ -1104,6 +1098,17 @@ audio.media-el { height: 44px; background: var(--bg-soft); }
   margin-bottom: 10px; overflow: hidden; border: 1px solid var(--border);
   border-radius: 10px; background: var(--bg-soft);
 }
+.lesson-transcript-group {
+  overflow: hidden; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-soft);
+}
+.lesson-transcript-group > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 15px 16px; color: var(--text); font-weight: 800; cursor: pointer;
+}
+.lesson-transcript-group > summary small { color: var(--text-dim); font-weight: 600; }
+.lesson-transcript-group-body { padding: 0 12px 12px; }
+.lesson-transcript-group-body .lesson-transcript:last-child { margin-bottom: 0; }
 .lesson-transcript summary { padding: 12px 14px; font-weight: 750; cursor: pointer; }
 .lesson-transcript-actions { padding: 0 14px 10px; }
 .lesson-transcript-actions .media-pres-link { margin-left: 0; }

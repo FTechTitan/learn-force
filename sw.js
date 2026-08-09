@@ -1,4 +1,4 @@
-const CACHE_NAME = "techforce-learn-v13";
+const CACHE_NAME = "techforce-learn-v14";
 
 const APP_SHELL = [
   "/",
