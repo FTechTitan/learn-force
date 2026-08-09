@@ -14,7 +14,7 @@ Usa esta skill cuando el usuario quiera aprender, resolver un problema o encontr
 - Lee la llave desde la variable `LEARN_FORCE_API_KEY` o desde `$HOME/.config/learnforce/.env`. Ésta es la ubicación canónica en todos los sistemas.
 - Nunca muestres la llave, la incluyas en la URL ni la copies a otra ubicación.
 - Si falta la llave, ejecuta tú mismo la creación de `$HOME/.config/learnforce` y de un `.env` vacío sin sobrescribir uno existente. Verifica que ambos existan. No delegues estos comandos al usuario.
-- Después indica al usuario que cree la llave en `https://learn.techforce.cl/agents.html`; no le pidas que la pegue en el chat. El único comando que debe ejecutar el usuario es: `$key = Read-Host "Pega tu API key de LearnForce"; Set-Content -LiteralPath ([IO.Path]::Combine($HOME, '.config', 'learnforce', '.env')) -Value "LEARN_FORCE_API_KEY=$key"; Remove-Variable key`.
+- Después indica al usuario que cree la llave en `https://learn.techforce.cl/agents.html`; no le pidas que la pegue en el chat. Entrega este único comando, sin partirlo en varias líneas: `"LEARN_FORCE_API_KEY=$(Read-Host Key)" > ~/.config/learnforce/.env`.
 - Envía la llave con el header `X-API-Key`.
 
 ## Cómo buscar

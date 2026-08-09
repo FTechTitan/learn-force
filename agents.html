@@ -124,8 +124,8 @@
    if (-not (Test-Path $envFile)) { New-Item -ItemType File $envFile | Out-Null }
 7. Verifica tú mismo que la carpeta, el .env, SKILL.md y los tres scripts existan.
 8. Sólo después de completar todo lo anterior, indícame que cree mi llave en https://learn.techforce.cl/agents.html. No me pidas pegarla en el chat.
-9. Déjame únicamente este comando para que yo guarde la llave desde PowerShell sin escribirla en el historial:
-   $key = Read-Host "Pega tu API key de LearnForce"; Set-Content -LiteralPath ([IO.Path]::Combine($HOME, '.config', 'learnforce', '.env')) -Value "LEARN_FORCE_API_KEY=$key"; Remove-Variable key
+9. Déjame únicamente este comando corto, en una sola línea y dentro de un bloque de código, para guardar la llave sin escribirla en el historial:
+   "LEARN_FORCE_API_KEY=$(Read-Host Key)" > ~/.config/learnforce/.env
 10. Tu respuesta final debe confirmar qué dejaste instalado, mostrar el enlace para crear la llave y el único comando anterior. No me delegues ningún otro comando. Indícame si debo reiniciar el agente.</code></pre>
           </div>
           <div class="agent-callout"><span>💡</span><p><strong>Después de instalar:</strong> reinicia el agente o abre una sesión nueva para que descubra la skill <code>learnforce</code>.</p></div>
@@ -157,7 +157,7 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
           <p>Después de instalar la skill, crea una llave en el panel de esta página. Guárdala en la ubicación universal de LearnForce; la skill y sus scripts leen exactamente ese mismo archivo.</p>
           <div class="agent-code-block">
             <div><span>Guardar la llave desde PowerShell</span><button type="button" data-copy-target="envAgentKey">Copiar comando</button></div>
-            <pre id="envAgentKey"><code>$key = Read-Host "Pega tu API key de LearnForce"; Set-Content -LiteralPath ([IO.Path]::Combine($HOME, '.config', 'learnforce', '.env')) -Value "LEARN_FORCE_API_KEY=$key"; Remove-Variable key</code></pre>
+            <pre id="envAgentKey"><code>"LEARN_FORCE_API_KEY=$(Read-Host Key)" > ~/.config/learnforce/.env</code></pre>
           </div>
           <div class="agent-callout"><span>✓</span><p>El comando pide la llave de forma interactiva y la guarda en <code>$HOME/.config/learnforce/.env</code>. Así no queda escrita en el historial del terminal.</p></div>
           <div class="agent-copy-field"><span>Base URL</span><code id="baseUrl">https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1</code><button type="button" data-copy-target="baseUrl">Copiar</button></div>
