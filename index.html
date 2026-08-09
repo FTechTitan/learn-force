@@ -41,7 +41,7 @@
         <button class="btn btn-secondary btn-sm" id="btnLogin">Iniciar sesión</button>
         <div class="user-chip hidden" id="userChip">
           <span class="user-email" id="userEmail"></span>
-          <button class="btn-mini" id="btnAgentKeys">Agentes</button>
+          <a class="btn-mini agent-connect-link" href="agents.html">Conecta tu agente</a>
           <button class="btn-mini" id="btnLogout">Salir</button>
         </div>
       </div>
@@ -73,32 +73,6 @@
         <span class="google-mark">G</span>
         <span>Continuar con Google</span>
       </button>
-    </div>
-  </div>
-
-  <!-- Claves personales para agentes -->
-  <div class="modal-overlay hidden" id="agentKeysModal">
-    <div class="modal agent-keys-modal">
-      <button class="modal-close" id="agentKeysClose" aria-label="Cerrar">✕</button>
-      <h2>API para tus agentes</h2>
-      <p class="modal-sub">Crea una clave para que tu agente consulte tus cursos y actualice tu progreso.</p>
-      <p class="auth-error hidden" id="agentKeysError"></p>
-      <div class="agent-key-secret hidden" id="agentKeySecret">
-        <strong>Cópiala ahora: se muestra una sola vez</strong>
-        <code id="agentKeyValue"></code>
-        <button type="button" class="btn btn-secondary btn-sm" id="copyAgentKey">Copiar clave</button>
-      </div>
-      <form id="agentKeyForm">
-        <label>Nombre de la integración
-          <input type="text" id="agentKeyName" maxlength="80" placeholder="Ej: Mi asistente personal" required />
-        </label>
-        <label>Expiración opcional
-          <input type="date" id="agentKeyExpiry" />
-        </label>
-        <button type="submit" class="btn btn-primary btn-block" id="createAgentKey">Crear clave</button>
-      </form>
-      <div class="agent-key-list-head"><strong>Claves activas</strong><a href="docs/agent-api.md" target="_blank" rel="noopener">Ver documentación</a></div>
-      <div class="agent-key-list" id="agentKeyList"><span class="agent-key-empty">Cargando…</span></div>
     </div>
   </div>
 

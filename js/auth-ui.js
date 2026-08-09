@@ -21,10 +21,6 @@
   const emailInput = $("#authEmail");
   const passwordInput = $("#authPassword");
   const emailBtn = $("#btnEmailAuth");
-  const agentModal = $("#agentKeysModal");
-  const agentError = $("#agentKeysError");
-  const agentList = $("#agentKeyList");
-  const agentForm = $("#agentKeyForm");
   let modoRegistro = false;
 
   function configurarModo(registro) {
@@ -81,60 +77,6 @@
     }
   }
 
-  function fechaCorta(value) {
-    if (!value) return "Sin expiración";
-    return new Intl.DateTimeFormat("es-CL", { dateStyle: "medium" }).format(new Date(value));
-  }
-
-  function escapar(value) {
-    const div = document.createElement("div");
-    div.textContent = String(value ?? "");
-    return div.innerHTML;
-  }
-
-  async function cargarClavesAgente() {
-    agentError.classList.add("hidden");
-    agentList.innerHTML = '<span class="agent-key-empty">Cargando…</span>';
-    try {
-      const payload = await window.AgentApi.listarClaves();
-      const keys = (payload.data || []).filter((key) => !key.revoked_at);
-      agentList.innerHTML = keys.length ? keys.map((key) => `
-        <article class="agent-key-row">
-          <div><strong>${escapar(key.name)}</strong><code>${escapar(key.key_prefix)}…</code><small>${fechaCorta(key.expires_at)}${key.last_used_at ? ` · usada ${fechaCorta(key.last_used_at)}` : ""}</small></div>
-          <button type="button" class="btn-mini danger" data-revoke-agent-key="${escapar(key.id)}">Revocar</button>
-        </article>`).join("") : '<span class="agent-key-empty">Todavía no tienes claves activas.</span>';
-      agentList.querySelectorAll("[data-revoke-agent-key]").forEach((button) => {
-        button.addEventListener("click", async () => {
-          button.disabled = true;
-          try {
-            await window.AgentApi.revocarClave(button.dataset.revokeAgentKey);
-            await cargarClavesAgente();
-          } catch (err) {
-            agentError.textContent = traducirError(err);
-            agentError.classList.remove("hidden");
-            button.disabled = false;
-          }
-        });
-      });
-    } catch (err) {
-      agentList.innerHTML = "";
-      agentError.textContent = traducirError(err);
-      agentError.classList.remove("hidden");
-    }
-  }
-
-  function abrirClavesAgente() {
-    $("#agentKeySecret").classList.add("hidden");
-    agentModal.classList.remove("hidden");
-    cargarClavesAgente();
-  }
-
-  function cerrarClavesAgente() {
-    $("#agentKeyValue").textContent = "";
-    $("#agentKeySecret").classList.add("hidden");
-    agentModal.classList.add("hidden");
-  }
-
   function notificar(user) {
     usuarioActual = user || null;
     sesionInicialResuelta = true;
@@ -183,38 +125,6 @@
     $("#btnLogout").addEventListener("click", async () => {
       await window.Auth.salir();
       // onCambio dispara notificar(null)
-    });
-
-    $("#btnAgentKeys").addEventListener("click", abrirClavesAgente);
-    $("#agentKeysClose").addEventListener("click", cerrarClavesAgente);
-    agentModal.addEventListener("click", (e) => { if (e.target === agentModal) cerrarClavesAgente(); });
-    $("#copyAgentKey").addEventListener("click", async () => {
-      await navigator.clipboard.writeText($("#agentKeyValue").textContent);
-      $("#copyAgentKey").textContent = "Copiada";
-      setTimeout(() => { $("#copyAgentKey").textContent = "Copiar clave"; }, 1600);
-    });
-    agentForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      agentError.classList.add("hidden");
-      const button = $("#createAgentKey");
-      button.disabled = true;
-      button.textContent = "Creando…";
-      try {
-        const name = $("#agentKeyName").value.trim();
-        const expiry = $("#agentKeyExpiry").value;
-        const expiresAt = expiry ? new Date(`${expiry}T23:59:59`).toISOString() : null;
-        const payload = await window.AgentApi.crearClave(name, expiresAt);
-        $("#agentKeyValue").textContent = payload.data.key;
-        $("#agentKeySecret").classList.remove("hidden");
-        agentForm.reset();
-        await cargarClavesAgente();
-      } catch (err) {
-        agentError.textContent = traducirError(err);
-        agentError.classList.remove("hidden");
-      } finally {
-        button.disabled = false;
-        button.textContent = "Crear clave";
-      }
     });
 
     googleBtn.addEventListener("click", () => {

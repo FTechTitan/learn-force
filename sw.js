@@ -1,13 +1,16 @@
-const CACHE_NAME = "techforce-learn-v15";
+const CACHE_NAME = "techforce-learn-v16";
 
 const APP_SHELL = [
   "/",
   "/index.html",
+  "/agents.html",
   "/manifest.webmanifest",
   "/css/styles.css",
+  "/css/agents.css",
   "/js/runner.js",
   "/js/supabase-client.js",
   "/js/auth-ui.js",
+  "/js/agents.js",
   "/js/app.js",
   "/js/assistant.js",
   "/js/admin.js",
@@ -44,14 +47,15 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
+    const cacheKey = url.pathname === "/agents.html" ? "/agents.html" : "/index.html";
     event.respondWith(
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          caches.open(CACHE_NAME).then((cache) => cache.put(cacheKey, copy));
           return response;
         })
-        .catch(() => caches.match("/index.html"))
+        .catch(() => caches.match(cacheKey))
     );
     return;
   }

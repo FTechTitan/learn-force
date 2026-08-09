@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f1117" />
+  <title>Conecta tu agente · TechForce Learn</title>
+  <link rel="icon" href="assets/pwa/favicon-64.png" />
+  <link rel="stylesheet" href="css/styles.css?v=20260809-agent-portal" />
+  <link rel="stylesheet" href="css/agents.css?v=20260809-agent-portal" />
+</head>
+<body class="agents-body">
+  <header class="agents-topbar">
+    <a class="agents-brand" href="index.html">
+      <span>⚡</span>
+      <span><strong>TechForce Learn</strong><small>API para agentes</small></span>
+    </a>
+    <div class="agents-top-actions">
+      <span class="agents-session" id="agentsSession">Comprobando sesión…</span>
+      <a class="btn btn-secondary btn-sm" href="index.html">← Volver a los cursos</a>
+    </div>
+  </header>
+
+  <main class="agents-shell">
+    <section class="agents-hero">
+      <span class="agents-kicker">TU APRENDIZAJE, DISPONIBLE PARA TUS HERRAMIENTAS</span>
+      <h1>Conecta tu agente</h1>
+      <p>Dale acceso seguro a tus cursos para que pueda buscar clases, leer transcripciones, descargar recursos y ayudarte a mantener tu progreso.</p>
+      <div class="agents-capabilities">
+        <span>✓ Solo tus cursos</span><span>✓ Llaves revocables</span><span>✓ Recursos integrados</span><span>✓ Progreso sincronizado</span>
+      </div>
+    </section>
+
+    <div class="agents-auth-gate hidden" id="agentsAuthGate">
+      <div class="agents-auth-icon">🔐</div>
+      <div><strong>Inicia sesión para conectar un agente</strong><p>Las llaves siempre pertenecen a tu cuenta y heredan únicamente tus permisos.</p></div>
+      <a class="btn btn-primary" href="index.html">Volver e iniciar sesión</a>
+    </div>
+
+    <div class="agents-layout hidden" id="agentsApp">
+      <aside class="agents-aside">
+        <div class="agent-panel agent-key-manager">
+          <div class="agent-panel-head">
+            <span class="agent-step">1</span>
+            <div><h2>Crea una llave</h2><p>Una llave por agente o integración.</p></div>
+          </div>
+          <p class="agent-feedback hidden" id="agentKeysError"></p>
+          <div class="agent-created-secret hidden" id="agentKeySecret">
+            <div><strong>Tu nueva llave</strong><small>Se muestra una sola vez. Guárdala ahora.</small></div>
+            <code id="agentKeyValue"></code>
+            <button type="button" class="btn btn-primary btn-block" id="copyAgentKey">Copiar llave</button>
+          </div>
+          <form class="agent-key-form" id="agentKeyForm">
+            <label>Nombre
+              <input type="text" id="agentKeyName" maxlength="80" placeholder="Ej: Claude personal" required />
+            </label>
+            <label>Expira
+              <select id="agentKeyExpiry">
+                <option value="30">En 30 días</option>
+                <option value="90" selected>En 90 días</option>
+                <option value="365">En 1 año</option>
+                <option value="">Sin expiración</option>
+              </select>
+            </label>
+            <button type="submit" class="btn btn-primary btn-block" id="createAgentKey">Crear llave segura</button>
+          </form>
+        </div>
+
+        <div class="agent-panel">
+          <div class="agent-panel-title"><div><h3>Tus llaves</h3><p>Revoca cualquier acceso cuando quieras.</p></div><button type="button" class="agent-refresh" id="refreshAgentKeys" aria-label="Actualizar">↻</button></div>
+          <div class="agent-key-list" id="agentKeyList"><span class="agent-key-empty">Cargando…</span></div>
+        </div>
+
+        <nav class="agent-doc-nav" aria-label="Documentación">
+          <span>EN ESTA GUÍA</span>
+          <a href="#inicio">Inicio rápido</a>
+          <a href="#autenticacion">Autenticación</a>
+          <a href="#endpoints">Endpoints</a>
+          <a href="#clase-completa">Clase completa</a>
+          <a href="#progreso">Actualizar progreso</a>
+          <a href="#seguridad">Seguridad</a>
+        </nav>
+      </aside>
+
+      <article class="agent-docs">
+        <section class="agent-doc-section" id="inicio">
+          <span class="agent-section-label">INICIO RÁPIDO</span>
+          <h2>Tu agente puede empezar en tres pasos</h2>
+          <div class="agent-steps">
+            <div><span>1</span><strong>Crea una llave</strong><p>Usa el panel de esta página y cópiala.</p></div>
+            <div><span>2</span><strong>Configura el header</strong><p>Guárdala como secreto <code>X-API-Key</code>.</p></div>
+            <div><span>3</span><strong>Lista tus cursos</strong><p>Comienza con <code>GET /courses</code>.</p></div>
+          </div>
+          <div class="agent-callout"><span>💡</span><p><strong>Consejo:</strong> crea una llave distinta para cada agente. Así puedes revocar uno sin desconectar los demás.</p></div>
+        </section>
+
+        <section class="agent-doc-section" id="autenticacion">
+          <span class="agent-section-label">AUTENTICACIÓN</span>
+          <h2>Una URL base y un header</h2>
+          <p>Todas las peticiones usan la misma URL base. La llave viaja en el header; nunca la agregues a la URL ni a un prompt público.</p>
+          <div class="agent-copy-field"><span>Base URL</span><code id="baseUrl">https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1</code><button type="button" data-copy-target="baseUrl">Copiar</button></div>
+          <div class="agent-code-block">
+            <div><span>Header requerido</span><button type="button" data-copy-target="authHeader">Copiar</button></div>
+            <pre id="authHeader"><code>X-API-Key: lf_agent_TU_LLAVE</code></pre>
+          </div>
+        </section>
+
+        <section class="agent-doc-section" id="endpoints">
+          <span class="agent-section-label">ENDPOINTS</span>
+          <h2>Todo lo que puede hacer tu agente</h2>
+          <div class="agent-endpoint-list">
+            <div><span class="method get">GET</span><code>/me</code><p>Identificar la cuenta conectada</p></div>
+            <div><span class="method get">GET</span><code>/courses</code><p>Listar los cursos disponibles</p></div>
+            <div><span class="method get">GET</span><code>/courses/{courseId}</code><p>Ver información de un curso</p></div>
+            <div><span class="method get">GET</span><code>/courses/{courseId}/modules</code><p>Listar sus módulos</p></div>
+            <div><span class="method get">GET</span><code>/courses/{courseId}/modules/{moduleId}</code><p>Ver un módulo</p></div>
+            <div><span class="method get">GET</span><code>/courses/{courseId}/modules/{moduleId}/lessons</code><p>Listar sus clases</p></div>
+            <div><span class="method get">GET</span><code>/courses/{courseId}/modules/{moduleId}/lessons/{lessonId}</code><p>Obtener la clase completa</p></div>
+            <div><span class="method get">GET</span><code>/progress</code><p>Consultar el progreso</p></div>
+            <div><span class="method put">PUT</span><code>/progress/{itemId}</code><p>Marcar avance o guardar una respuesta</p></div>
+          </div>
+        </section>
+
+        <section class="agent-doc-section" id="clase-completa">
+          <span class="agent-section-label">EJEMPLO</span>
+          <h2>Leer una clase completa</h2>
+          <p>Una sola petición devuelve la descripción, video, contenido, transcripciones y recursos. Los enlaces privados de descarga duran una hora.</p>
+          <div class="agent-code-block">
+            <div><span>cURL</span><button type="button" data-copy-target="lessonCurl">Copiar</button></div>
+            <pre id="lessonCurl"><code>curl "$BASE_URL/courses/imperio-agentico/modules/MODULO/lessons/CLASE" \
+  -H "X-API-Key: $LEARN_FORCE_API_KEY"</code></pre>
+          </div>
+          <div class="agent-response-map">
+            <div><code>body_markdown</code><span>Apuntes completos</span></div>
+            <div><code>transcripts[]</code><span>Texto y SRT descargable</span></div>
+            <div><code>resources[]</code><span>Plantillas y documentos</span></div>
+            <div><code>video_url</code><span>Video original de la clase</span></div>
+          </div>
+        </section>
+
+        <section class="agent-doc-section" id="progreso">
+          <span class="agent-section-label">INTERACCIÓN</span>
+          <h2>Actualizar el progreso</h2>
+          <p>El agente solo puede escribir en el progreso de la cuenta que creó la llave.</p>
+          <div class="agent-code-block">
+            <div><span>Marcar como completado</span><button type="button" data-copy-target="progressCurl">Copiar</button></div>
+            <pre id="progressCurl"><code>curl -X PUT "$BASE_URL/progress/ID_DE_LA_CLASE" \
+  -H "X-API-Key: $LEARN_FORCE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}'</code></pre>
+          </div>
+        </section>
+
+        <section class="agent-doc-section" id="seguridad">
+          <span class="agent-section-label">SEGURIDAD</span>
+          <h2>Diseñada para entregar el mínimo acceso</h2>
+          <div class="agent-security-grid">
+            <div><span>🔒</span><strong>No guardamos la llave</strong><p>Solo se almacena su hash SHA-256.</p></div>
+            <div><span>👤</span><strong>Acceso personal</strong><p>Hereda los permisos del usuario dueño.</p></div>
+            <div><span>⏱️</span><strong>Expiración y revocación</strong><p>Desactiva una llave inmediatamente.</p></div>
+            <div><span>🛡️</span><strong>Límite de uso</strong><p>120 peticiones por minuto y llave.</p></div>
+          </div>
+          <p class="agent-openapi">¿Tu herramienta acepta OpenAPI? <a href="docs/agent-api.openapi.yaml" download>Descargar especificación OpenAPI 3.1 →</a></p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js?v=20260809-agent-portal"></script>
+  <script src="js/agents.js?v=20260809-agent-portal"></script>
+</body>
+</html>
