@@ -619,14 +619,9 @@
   }
 
   function pintarWelcome() {
-    const h = welcome.querySelector("h2");
-    const p = welcome.querySelector("p");
-    const list = welcome.querySelector(".welcome-list");
     if (!cursoActual) {
-      if (h) h.textContent = "Elige un curso";
       const sinAcceso = usuarioActual && estadoAcceso.status !== "approved";
-      if (p) {
-        p.innerHTML = sinAcceso
+      const mensaje = sinAcceso
           ? estadoAcceso.status === "pending"
             ? "Tu solicitud de acceso esta pendiente de aprobacion."
             : estadoAcceso.status === "rejected"
@@ -635,9 +630,7 @@
           : cursos.length
           ? "Estos cursos vienen desde Supabase. El catálogo requiere iniciar sesión."
           : "Inicia sesión para ver los cursos disponibles.";
-      }
-      if (list) {
-        list.innerHTML = sinAcceso
+      const contenido = sinAcceso
           ? estadoAcceso.status === "pending"
             ? `<li class="access-card">
                 <strong>Solicitud enviada</strong>
@@ -662,57 +655,99 @@
               </li>
             `).join("")
           : `<li>El catálogo se muestra solo para usuarios con sesión iniciada.</li>`;
+      welcome.className = "welcome";
+      welcome.innerHTML = `
+        <h2>Elige un curso</h2>
+        <p>${mensaje}</p>
+        <ul class="welcome-list">${contenido}</ul>
+        <p class="loading-note" id="pyStatus">${sinAcceso ? "Solicita acceso para cargar el catálogo." : cursos.length ? "Selecciona un curso para ver su programa completo." : "Inicia sesión para cargar el catálogo."}</p>`;
+      const list = welcome.querySelector(".welcome-list");
+      if (list) {
         const accessBtn = list.querySelector("[data-request-course-access]");
         if (accessBtn) accessBtn.addEventListener("click", solicitarAccesoCursos);
         list.querySelectorAll("[data-course-id]").forEach((btn) => {
           btn.addEventListener("click", () => cambiarCurso(btn.getAttribute("data-course-id")));
         });
       }
-      if (pyStatus) {
-        pyStatus.textContent = sinAcceso
-          ? estadoAcceso.status === "pending"
-            ? "Solicitud pendiente de aprobacion."
-            : "Solicita acceso para cargar el catalogo."
-          : cursos.length
-          ? "Selecciona un curso para ver sus módulos."
-          : "Inicia sesión para cargar el catálogo.";
-        pyStatus.style.background = "var(--bg-card)";
-      }
       return;
     }
 
-    if (h) h.textContent = `Bienvenido/a a ${cursoActual.titulo}`;
-    if (p) {
-      p.innerHTML = cursoActual.descripcion || "Elige un módulo de la izquierda para empezar.";
-    }
-    if (list) {
-      if (cursoTieneClasesVideo()) {
-        list.innerHTML = `
-          <li>▶️ Abre un módulo y elige una clase.</li>
-          <li>🎬 Cada clase reúne video, contenido y transcripción.</li>
-          <li>📚 Las clases y recursos quedan ordenados por módulo.</li>`;
-      } else if (cursoTieneCodigo()) {
-        list.innerHTML = `
-          <li>📝 Lee el enunciado y escribe tu solución en el editor.</li>
-          <li>▶️ Toca <b>Ejecutar</b> para probar tu código.</li>
-          <li>✅ Inicia sesión para <b>Comprobar</b> y guardar progreso.</li>
-          <li>📚 Puedes abrir cualquier ejercicio del curso.</li>`;
-      } else {
-        list.innerHTML = `
-          <li>✅ Responde verdadero/falso, alternativas o ejercicios paso a paso.</li>
-          <li>🔑 Inicia sesión para comprobar y guardar tu avance.</li>
-          <li>📌 Revisa la explicación inmediata después de comprobar.</li>
-          <li>📚 Puedes abrir cualquier pregunta del curso.</li>`;
-      }
-    }
-    if (pyStatus) {
-      pyStatus.textContent = cursoTieneClasesVideo()
-        ? "Curso listo. Abre un módulo y selecciona una clase."
-        : cursoTieneCodigo()
-        ? "Cargando Python en el navegador…"
-        : "Curso listo. Elige la primera pregunta para empezar.";
-      pyStatus.style.background = cursoTieneCodigo() ? "var(--green-soft)" : "var(--bg-card)";
-    }
+    const modulosCurso = cursoActual.modulos || [];
+    const totalClases = modulosCurso.reduce((total, modulo) =>
+      total + clasesMediaModulo(modulo).filter((clase) => clase.lessonKind !== "section").length, 0);
+    const totalActividades = modulosCurso.reduce((total, modulo) => total + (modulo.ejercicios || []).length, 0);
+    const totalTranscripciones = modulosCurso.reduce((total, modulo) =>
+      total + clasesMediaModulo(modulo).filter((clase) => clase.hasTranscript).length, 0);
+
+    const programa = modulosCurso.map((modulo, moduleIndex) => {
+      const clases = clasesMediaModulo(modulo);
+      let numero = 0;
+      const lecciones = clases.length
+        ? clases.map((clase) => {
+            if (clase.lessonKind === "section") {
+              return `<div class="course-outline-section">${escaparHtml(clase.titulo)}</div>`;
+            }
+            numero += 1;
+            const resumen = clase.resumen || `Aprende los conceptos, herramientas y pasos prácticos de “${clase.titulo}”.`;
+            return `<button type="button" class="course-outline-lesson" data-module-id="${escaparHtml(modulo.id)}" data-lesson-id="${escaparHtml(clase.id)}">
+              <span class="course-outline-number">${numero}</span>
+              <span class="course-outline-copy">
+                <strong>${escaparHtml(clase.titulo)}</strong>
+                <span>${escaparHtml(resumen)}</span>
+                <small>${clase.videoDuration ? escaparHtml(clase.videoDuration) : "Clase"}${clase.hasTranscript ? " · Transcripción disponible" : ""}</small>
+              </span>
+              <span class="course-outline-open">Abrir →</span>
+            </button>`;
+          }).join("")
+        : (modulo.ejercicios || []).map((ejercicio, index) => `
+            <button type="button" class="course-outline-lesson" data-exercise-id="${escaparHtml(ejercicio.id)}">
+              <span class="course-outline-number">${index + 1}</span>
+              <span class="course-outline-copy"><strong>${escaparHtml(ejercicio.titulo)}</strong><span>Actividad práctica para aplicar lo aprendido en este módulo.</span></span>
+              <span class="course-outline-open">Abrir →</span>
+            </button>`).join("");
+      const intro = modulo.overviewMarkdown || modulo.intro || "Revisa las clases y actividades de este módulo.";
+      return `<details class="course-module-card" ${moduleIndex === 0 ? "open" : ""}>
+        <summary>
+          <span class="course-module-emoji">${modulo.emoji || "📦"}</span>
+          <span><strong>${escaparHtml(modulo.titulo)}</strong><small>${clases.filter((c) => c.lessonKind !== "section").length || (modulo.ejercicios || []).length} contenidos</small></span>
+          <span class="course-module-chevron">⌄</span>
+        </summary>
+        <div class="course-module-body">
+          <div class="course-module-intro">${renderMarkdownSeguro(intro)}</div>
+          <div class="course-outline-lessons">${lecciones || '<p class="course-empty-module">Contenido próximamente.</p>'}</div>
+        </div>
+      </details>`;
+    }).join("");
+
+    welcome.className = "welcome course-overview";
+    welcome.innerHTML = `
+      <button type="button" class="course-back" data-course-back>← Todos los cursos</button>
+      <section class="course-hero">
+        <div class="course-hero-icon">${cursoActual.emoji || "📚"}</div>
+        <div>
+          <span class="course-eyebrow">Programa completo</span>
+          <h2>${escaparHtml(cursoActual.titulo)}</h2>
+          <p>${escaparHtml(cursoActual.descripcion || cursoActual.subtitle || "Explora el programa y abre cualquier contenido para comenzar.")}</p>
+        </div>
+      </section>
+      <div class="course-stats">
+        <span><strong>${modulosCurso.length}</strong> módulos</span>
+        <span><strong>${totalClases || totalActividades}</strong> ${totalClases ? "clases" : "actividades"}</span>
+        ${totalTranscripciones ? `<span><strong>${totalTranscripciones}</strong> transcripciones</span>` : ""}
+      </div>
+      <div class="course-program-head"><div><span class="course-eyebrow">Contenido</span><h3>Todo lo que verás</h3></div><p>Despliega un módulo para revisar cada clase y su resumen.</p></div>
+      <div class="course-program">${programa}</div>`;
+
+    welcome.querySelector("[data-course-back]").addEventListener("click", mostrarCatalogo);
+    welcome.querySelectorAll("[data-lesson-id]").forEach((btn) => {
+      btn.addEventListener("click", () => abrirClaseMedia(btn.dataset.moduleId, btn.dataset.lessonId));
+    });
+    welcome.querySelectorAll("[data-exercise-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const index = ejerciciosPlanos.findIndex((ejercicio) => ejercicio.id === btn.dataset.exerciseId);
+        if (index >= 0) abrirEjercicio(index);
+      });
+    });
   }
 
   // --- Clases en audio/video -----------------------------------------------

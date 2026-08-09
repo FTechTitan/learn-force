@@ -113,6 +113,18 @@ def transcript_text(path: Path) -> str:
     return "\n\n".join(paragraphs)
 
 
+def lesson_summary(title: str, body: str, transcripts: list[str], limit: int = 360) -> str:
+    """Build a compact catalog description without loading full lesson content in the UI."""
+    source = body.strip() or next((text.strip() for text in transcripts if text.strip()), "")
+    source = re.sub(r"^#{1,6}\s*", "", source, flags=re.MULTILINE)
+    source = re.sub(r"!?\[([^]]+)\]\([^)]+\)", r"\1", source)
+    source = re.sub(r"[`*_>|~-]+", " ", source)
+    source = re.sub(r"\s+", " ", source).strip()
+    if not source:
+        return f'Aprende los conceptos, herramientas y pasos prácticos de “{title}”.'
+    return source[:limit].rstrip() + ("…" if len(source) > limit else "")
+
+
 def resource_kind(path: Path) -> str:
     ext = path.suffix.lower()
     if ext in {".json", ".xlsx", ".docx", ".html", ".txt"}:
@@ -185,16 +197,19 @@ def build_manifest(vault: Path) -> dict:
             title, body, attachment_refs = title_and_body(lesson_path)
             video = videos.get(relative)
             lesson_transcripts = find_transcripts(module_dir, lesson_path.stem)
+            transcript_bodies = []
             for transcript_order, (language, transcript) in enumerate(lesson_transcripts, start=1):
                 transcript_hash = sha256_file(transcript)
                 transcript_path = f"transcripts/{transcript_hash[:20]}/{slug(transcript.stem)}.srt"
+                transcript_body = transcript_text(transcript)
+                transcript_bodies.append(transcript_body)
                 upload_files[transcript_path] = transcript
                 transcripts.append(
                     {
                         "id": stable_id("imperio-transcript", f"{relative}|{language}"),
                         "lesson_id": lesson_id,
                         "language": language,
-                        "transcript_text": transcript_text(transcript),
+                        "transcript_text": transcript_body,
                         "storage_path": transcript_path,
                         "sort_order": transcript_order,
                     }
@@ -208,6 +223,7 @@ def build_manifest(vault: Path) -> dict:
                     "module_id": module_id,
                     "source_path": relative,
                     "title": title,
+                    "summary": lesson_summary(title, body, transcript_bodies),
                     "lesson_kind": "section" if not (body or video or lesson_transcripts or attachment_refs) else "lesson",
                     "sort_order": lesson_order,
                     "video_url": video.get("url") if video else None,

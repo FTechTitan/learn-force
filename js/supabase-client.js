@@ -206,6 +206,7 @@ function normalizarCurso(row) {
         .map((lesson) => ({
           id: lesson.id,
           titulo: lesson.title,
+          resumen: lesson.summary || "",
           lessonKind: lesson.lesson_kind || "lesson",
           videoUrl: lesson.video_url || "",
           videoProvider: lesson.video_provider || "",
@@ -272,6 +273,7 @@ const CursosRemotos = {
           course_lessons!course_lessons_module_course_fk (
             id,
             title,
+            summary,
             lesson_kind,
             video_url,
             video_provider,
