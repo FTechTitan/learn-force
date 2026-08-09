@@ -47,9 +47,14 @@
 .agent-doc-section + .agent-doc-section { padding-top: 54px; border-top: 1px solid var(--border); }
 .agent-doc-section h2 { margin: 8px 0 12px; font-size: clamp(27px, 3vw, 38px); line-height: 1.15; letter-spacing: -1px; }
 .agent-doc-section > p { max-width: 760px; color: var(--text-dim); font-size: 15px; line-height: 1.7; }
-.agent-subheading { margin: 30px 0 4px; font-size: 19px; }
 .agent-install-prompt { border-color: rgba(75,139,190,.55); box-shadow: 0 14px 35px rgba(0,0,0,.14); }
 .agent-install-prompt pre { white-space: pre-wrap; }
+.agent-manual-install { margin-top: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 11px; background: rgba(28,32,48,.5); }
+.agent-manual-install summary { padding: 13px 15px; color: #c8d2e3; font-size: 13px; font-weight: 800; cursor: pointer; user-select: none; }
+.agent-manual-install summary:hover { color: var(--text); background: var(--bg-soft); }
+.agent-manual-content { padding: 0 14px 14px; border-top: 1px solid var(--border); }
+.agent-manual-content > p { margin: 13px 0 0; color: var(--text-dim); font-size: 12px; }
+.agent-manual-content .agent-openapi { padding: 10px 0 0; background: none; }
 .agent-doc-section code { font-family: var(--mono); }
 .agent-steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 24px; }
 .agent-steps > div { padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); }
@@ -65,6 +70,10 @@
 .agent-code-block { margin-top: 14px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #0a0c11; }
 .agent-code-block > div { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-dim); background: var(--bg-soft); font-size: 11px; font-weight: 700; }
 .agent-code-block pre { margin: 0; padding: 18px; overflow-x: auto; color: #d4deed; font: 12px/1.8 var(--mono); }
+.agent-prompt-card { border-color: rgba(75,139,190,.38); background: linear-gradient(135deg, rgba(20,31,45,.96), #0a0c11 72%); }
+.agent-prompt-card > div { padding: 11px 14px; color: #c6d4e8; font-size: 12px; }
+.agent-prompt-card > div button { padding: 5px 9px; border-radius: 6px; background: rgba(75,139,190,.14); }
+.agent-prompt-card pre { overflow-x: visible; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; color: #e1e8f3; font: 14px/1.65 var(--font); }
 .agent-endpoint-list { margin-top: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; }
 .agent-endpoint-list > div { display: grid; grid-template-columns: 45px minmax(260px,1fr) minmax(180px,.8fr); gap: 14px; align-items: center; padding: 13px 15px; background: rgba(28,32,48,.55); }
 .agent-endpoint-list > div + div { border-top: 1px solid var(--border); }

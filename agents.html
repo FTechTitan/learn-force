@@ -122,21 +122,25 @@
           </div>
           <div class="agent-callout"><span>💡</span><p><strong>Después de instalar:</strong> reinicia el agente o abre una sesión nueva para que descubra la skill <code>learnforce</code>.</p></div>
 
-          <h3 class="agent-subheading">Instalación manual</h3>
-          <p>Si prefieres hacerlo tú, copia el comando de tu herramienta en PowerShell.</p>
-          <div class="agent-code-block">
-            <div><span>Codex · PowerShell</span><button type="button" data-copy-target="installCodexSkill">Copiar</button></div>
-            <pre id="installCodexSkill"><code>$skill="$HOME\.codex\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
+          <details class="agent-manual-install">
+            <summary>Instalación manual</summary>
+            <div class="agent-manual-content">
+              <p>Si prefieres hacerlo tú, copia el comando de tu herramienta en PowerShell.</p>
+              <div class="agent-code-block">
+                <div><span>Codex · PowerShell</span><button type="button" data-copy-target="installCodexSkill">Copiar</button></div>
+                <pre id="installCodexSkill"><code>$skill="$HOME\.codex\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
 Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -OutFile "$skill\SKILL.md"
 "search","lesson","module-lessons" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
-          </div>
-          <div class="agent-code-block">
-            <div><span>Claude Code · PowerShell</span><button type="button" data-copy-target="installClaudeSkill">Copiar</button></div>
-            <pre id="installClaudeSkill"><code>$skill="$HOME\.claude\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
+              </div>
+              <div class="agent-code-block">
+                <div><span>Claude Code · PowerShell</span><button type="button" data-copy-target="installClaudeSkill">Copiar</button></div>
+                <pre id="installClaudeSkill"><code>$skill="$HOME\.claude\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
 Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -OutFile "$skill\SKILL.md"
 "search","lesson","module-lessons" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
-          </div>
-          <p class="agent-openapi"><a href="docs/learnforce-skill/SKILL.md" download>Descargar la skill LearnForce manualmente →</a></p>
+              </div>
+              <p class="agent-openapi"><a href="docs/learnforce-skill/SKILL.md" download>Descargar SKILL.md manualmente →</a></p>
+            </div>
+          </details>
         </section>
 
         <section class="agent-doc-section" id="autenticacion">
@@ -160,22 +164,22 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
           <h2>Ahora sólo pide lo que necesitas</h2>
           <p>Con LearnForce instalada y la llave guardada, no necesitas repetir documentación, endpoints ni credenciales. Reemplaza únicamente el texto entre corchetes.</p>
 
-          <div class="agent-code-block">
+          <div class="agent-code-block agent-prompt-card">
             <div><span>Encontrar las clases más importantes</span><button type="button" data-copy-target="promptTopLessons">Copiar</button></div>
             <pre id="promptTopLessons"><code>Usando la skill LearnForce, recomiéndame las 5 mejores clases de Imperio Agéntico para aprender [tema]. Primero dame una explicación general de la ruta y luego las clases ordenadas, cada una con contexto y su URL.</code></pre>
           </div>
 
-          <div class="agent-code-block">
+          <div class="agent-code-block agent-prompt-card">
             <div><span>Recomendar cómo hacer algo</span><button type="button" data-copy-target="promptHowTo">Copiar</button></div>
             <pre id="promptHowTo"><code>Usando la skill LearnForce, dime cómo hacer [objetivo] según Imperio Agéntico. Dame primero una explicación general y luego los pasos con las clases y URLs que debo consultar.</code></pre>
           </div>
 
-          <div class="agent-code-block">
+          <div class="agent-code-block agent-prompt-card">
             <div><span>Crear una ruta de aprendizaje</span><button type="button" data-copy-target="promptLearningPath">Copiar</button></div>
             <pre id="promptLearningPath"><code>Usando la skill LearnForce, créame una ruta con clases de Imperio Agéntico para aprender [tema] desde cero. Dame una explicación general y luego las clases de lo básico a lo avanzado, con contexto y URL.</code></pre>
           </div>
 
-          <div class="agent-code-block">
+          <div class="agent-code-block agent-prompt-card">
             <div><span>Resolver un problema</span><button type="button" data-copy-target="promptProblem">Copiar</button></div>
             <pre id="promptProblem"><code>Usando la skill LearnForce, ayúdame con este problema según Imperio Agéntico: [describe el problema]. Explícame brevemente el enfoque y recomiéndame en orden las clases y recursos útiles, cada uno con su URL.</code></pre>
           </div>
