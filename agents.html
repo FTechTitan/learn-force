@@ -77,6 +77,7 @@
           <a href="#autenticacion">Autenticación</a>
           <a href="#endpoints">Endpoints</a>
           <a href="#busqueda">Búsqueda</a>
+          <a href="#prompts">Prompts para tu agente</a>
           <a href="#clase-completa">Clase completa</a>
           <a href="#progreso">Actualizar progreso</a>
           <a href="#seguridad">Seguridad</a>
@@ -128,7 +129,7 @@
         <section class="agent-doc-section" id="busqueda">
           <span class="agent-section-label">BÚSQUEDA BETA</span>
           <h2>Encuentra qué estudiar según tu intención</h2>
-          <p>Los tres modos comparten la misma entrada y respuesta. El piloto actual usa contexto liviano de las clases de WhatsApp; no indexa transcripciones.</p>
+          <p>Los tres modos comparten la misma entrada y respuesta. La búsqueda cubre las clases, contenidos, transcripciones y recursos de Imperio Agéntico.</p>
           <div class="agent-code-block">
             <div><span>Buscar por palabras clave</span><button type="button" data-copy-target="searchCurl">Copiar</button></div>
             <pre id="searchCurl"><code>curl -X POST "$BASE_URL/search/keyword" \
@@ -140,6 +141,32 @@
             <div><strong>keyword</strong><span>Más barato</span><p>PostgreSQL Full Text Search. No ejecuta modelos.</p></div>
             <div><strong>semantic</strong><span>Más flexible</span><p>Busca significado con embeddings OpenAI sobre clases y transcripciones.</p></div>
             <div><strong>hybrid</strong><span>Mejor ranking</span><p>Combina palabras y significado, incluyendo fragmentos y recursos.</p></div>
+          </div>
+        </section>
+
+        <section class="agent-doc-section" id="prompts">
+          <span class="agent-section-label">COPIAR Y PEGAR</span>
+          <h2>Prompts simples para tu agente</h2>
+          <p>Reemplaza el texto entre corchetes por lo que quieras aprender. Tu agente buscará la evidencia dentro de Imperio Agéntico.</p>
+
+          <div class="agent-code-block">
+            <div><span>Encontrar las clases más importantes</span><button type="button" data-copy-target="promptTopLessons">Copiar</button></div>
+            <pre id="promptTopLessons"><code>Dime cuáles son las 5 clases más importantes para aprender [tema]. Ordénalas y explícame brevemente por qué debería ver cada una.</code></pre>
+          </div>
+
+          <div class="agent-code-block">
+            <div><span>Recomendar cómo hacer algo</span><button type="button" data-copy-target="promptHowTo">Copiar</button></div>
+            <pre id="promptHowTo"><code>Dime cómo me recomiendas hacer [objetivo] de acuerdo con el curso Imperio Agéntico. Dame los pasos y las clases que debería consultar.</code></pre>
+          </div>
+
+          <div class="agent-code-block">
+            <div><span>Crear una ruta de aprendizaje</span><button type="button" data-copy-target="promptLearningPath">Copiar</button></div>
+            <pre id="promptLearningPath"><code>Quiero aprender [tema] desde cero. Créame una ruta de aprendizaje usando las clases de Imperio Agéntico, desde la más básica hasta la más avanzada.</code></pre>
+          </div>
+
+          <div class="agent-code-block">
+            <div><span>Resolver un problema</span><button type="button" data-copy-target="promptProblem">Copiar</button></div>
+            <pre id="promptProblem"><code>Tengo este problema: [describe el problema]. Busca en Imperio Agéntico las clases y recursos que me pueden ayudar y recomiéndame qué hacer primero.</code></pre>
           </div>
         </section>
 

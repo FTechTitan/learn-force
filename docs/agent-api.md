@@ -65,6 +65,24 @@ El índice cubre exclusivamente Imperio Agéntico: títulos, resúmenes, conteni
 
 Los vectores se generan con OpenAI y se almacenan y consultan en Supabase mediante pgvector. Learn Force no genera la respuesta final: esa responsabilidad corresponde al agente consumidor.
 
+### Prompts para copiar y pegar
+
+```text
+Dime cuáles son las 5 clases más importantes para aprender [tema]. Ordénalas y explícame brevemente por qué debería ver cada una.
+```
+
+```text
+Dime cómo me recomiendas hacer [objetivo] de acuerdo con el curso Imperio Agéntico. Dame los pasos y las clases que debería consultar.
+```
+
+```text
+Quiero aprender [tema] desde cero. Créame una ruta de aprendizaje usando las clases de Imperio Agéntico, desde la más básica hasta la más avanzada.
+```
+
+```text
+Tengo este problema: [describe el problema]. Busca en Imperio Agéntico las clases y recursos que me pueden ayudar y recomiéndame qué hacer primero.
+```
+
 Actualizar progreso:
 
 ```bash
