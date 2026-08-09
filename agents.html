@@ -98,33 +98,55 @@
         </section>
 
         <section class="agent-doc-section" id="instalar-skill">
-          <span class="agent-section-label">OPCIONAL · RECOMENDADO</span>
-          <h2>Instala la skill y evita explicar la API cada vez</h2>
-          <p>La skill le enseña a tu agente cómo autenticarse, elegir el buscador correcto y leer clases completas. Instálala una vez y después pídele directamente lo que quieres aprender.</p>
+          <span class="agent-section-label">PASO 1 · REQUERIDO</span>
+          <h2>Pídele a tu agente que instale LearnForce</h2>
+          <p>Copia esta instrucción completa en Codex o Claude Code. El agente detectará su carpeta de skills, descargará LearnForce con sus scripts y comprobará que quedó instalada.</p>
+          <div class="agent-code-block agent-install-prompt">
+            <div><span>Instrucción recomendada para el agente</span><button type="button" data-copy-target="agentInstallPrompt">Copiar</button></div>
+            <pre id="agentInstallPrompt"><code>Instala la skill LearnForce en este equipo.
+
+1. Detecta si estás ejecutándote como Codex o Claude Code.
+2. Usa la carpeta correspondiente:
+   - Codex: $HOME\.codex\skills\learnforce
+   - Claude Code: $HOME\.claude\skills\learnforce
+3. Descarga el archivo principal desde:
+   https://learn.techforce.cl/docs/learnforce-skill/SKILL.md
+   y guárdalo como SKILL.md dentro de esa carpeta.
+4. Crea la subcarpeta scripts y descarga dentro de ella estos tres archivos:
+   - https://learn.techforce.cl/docs/learnforce-skill/scripts/search.ps1
+   - https://learn.techforce.cl/docs/learnforce-skill/scripts/lesson.ps1
+   - https://learn.techforce.cl/docs/learnforce-skill/scripts/module-lessons.ps1
+5. Verifica que existan SKILL.md y los tres scripts. No configures ni solicites la API key todavía.
+6. Al terminar, dime la ruta donde quedó instalada y si debo reiniciar el agente.</code></pre>
+          </div>
+          <div class="agent-callout"><span>💡</span><p><strong>Después de instalar:</strong> reinicia el agente o abre una sesión nueva para que descubra la skill <code>learnforce</code>.</p></div>
+
+          <h3 class="agent-subheading">Instalación manual</h3>
+          <p>Si prefieres hacerlo tú, copia el comando de tu herramienta en PowerShell.</p>
           <div class="agent-code-block">
             <div><span>Codex · PowerShell</span><button type="button" data-copy-target="installCodexSkill">Copiar</button></div>
             <pre id="installCodexSkill"><code>$skill="$HOME\.codex\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
-Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce.skill.md" -OutFile "$skill\SKILL.md"
+Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -OutFile "$skill\SKILL.md"
 "search","lesson","module-lessons" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
           </div>
           <div class="agent-code-block">
             <div><span>Claude Code · PowerShell</span><button type="button" data-copy-target="installClaudeSkill">Copiar</button></div>
             <pre id="installClaudeSkill"><code>$skill="$HOME\.claude\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
-Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce.skill.md" -OutFile "$skill\SKILL.md"
+Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -OutFile "$skill\SKILL.md"
 "search","lesson","module-lessons" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
           </div>
-          <div class="agent-callout"><span>✓</span><p>Después de instalarla, reinicia tu agente. Guarda la llave en <code>C:\github\learn-force\.env</code> como <code>LEARN_FORCE_API_KEY</code>.</p></div>
-          <p class="agent-openapi"><a href="docs/learnforce.skill.md" download>Descargar la skill LearnForce manualmente →</a></p>
+          <p class="agent-openapi"><a href="docs/learnforce-skill/SKILL.md" download>Descargar la skill LearnForce manualmente →</a></p>
         </section>
 
         <section class="agent-doc-section" id="autenticacion">
-          <span class="agent-section-label">AUTENTICACIÓN</span>
-          <h2>Una URL base y un header</h2>
-          <p>Todas las peticiones usan la misma URL base. La llave viaja en el header; nunca la agregues a la URL ni a un prompt público.</p>
+          <span class="agent-section-label">PASO 2 · API KEY</span>
+          <h2>Crea la llave y guárdala en el .env</h2>
+          <p>Después de instalar la skill, crea una llave en el panel de esta página. Guárdala en la ubicación universal de LearnForce; la skill y sus scripts leen exactamente ese mismo archivo.</p>
           <div class="agent-code-block">
-            <div><span>2. Guarda la llave en C:\github\learn-force\.env</span><button type="button" data-copy-target="envAgentKey">Copiar</button></div>
+            <div><span>Archivo: $HOME/.config/learnforce/.env</span><button type="button" data-copy-target="envAgentKey">Copiar contenido</button></div>
             <pre id="envAgentKey"><code>LEARN_FORCE_API_KEY=lf_agent_PEGA_AQUI_TU_LLAVE</code></pre>
           </div>
+          <div class="agent-callout"><span>✓</span><p>En Windows, <code>$HOME</code> normalmente es <code>C:\Users\TU_USUARIO</code>. En Linux y macOS es tu carpeta personal. No guardes la llave dentro de la carpeta de la skill.</p></div>
           <div class="agent-copy-field"><span>Base URL</span><code id="baseUrl">https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1</code><button type="button" data-copy-target="baseUrl">Copiar</button></div>
           <div class="agent-code-block">
             <div><span>Header requerido</span><button type="button" data-copy-target="authHeader">Copiar</button></div>

@@ -11,7 +11,8 @@ Usa esta skill cuando el usuario quiera aprender, resolver un problema o encontr
 
 - Documentación: `https://learn.techforce.cl/agents.html`
 - Base URL: `https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1`
-- Lee la llave desde `LEARN_FORCE_API_KEY`. Nunca la muestres ni la incluyas en la URL o en tu respuesta.
+- Lee la llave desde la variable `LEARN_FORCE_API_KEY` o desde `$HOME/.config/learnforce/.env`. Ésta es la ubicación canónica en todos los sistemas.
+- Nunca muestres la llave, la incluyas en la URL ni la copies a otra ubicación.
 - Envía la llave con el header `X-API-Key`.
 
 ## Cómo buscar
