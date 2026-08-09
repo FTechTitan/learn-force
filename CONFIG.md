@@ -41,7 +41,7 @@ Cada rama/PR distinta de `main` genera un **preview deployment** automático.
 
 | Campo | Valor |
 |-------|-------|
-| Repo | `FTechTitan/progra-UAI` |
+| Repo | `FTechTitan/learn-force` |
 | Cuenta `gh` | `FTechTitan` (cuenta personal de Francisco) |
 | Remote | `git@github.com:FTechTitan/progra-UAI.git` |
 
