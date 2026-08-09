@@ -14,7 +14,11 @@ Usa esta skill cuando el usuario quiera aprender, resolver un problema o encontr
 - Lee la llave desde la variable `LEARN_FORCE_API_KEY` o desde `$HOME/.config/learnforce/.env`. Ésta es la ubicación canónica en todos los sistemas.
 - Nunca muestres la llave, la incluyas en la URL ni la copies a otra ubicación.
 - Si falta la llave, ejecuta tú mismo la creación de `$HOME/.config/learnforce` y de un `.env` vacío sin sobrescribir uno existente. Verifica que ambos existan. No delegues estos comandos al usuario.
-- Después indica al usuario que cree la llave en `https://learn.techforce.cl/agents.html`; no le pidas que la pegue en el chat. Entrega este único comando, sin partirlo en varias líneas: `"LEARN_FORCE_API_KEY=$(Read-Host Key)" > ~/.config/learnforce/.env`.
+- Durante la instalación, copia `scripts/key.ps1` a `$HOME/.config/learnforce/lfkey.ps1` y registra en `$PROFILE.CurrentUserAllHosts` la función `lfkey` que ejecuta ese script. Preserva el contenido existente del perfil y no dupliques la función.
+- Nunca leas el portapapeles sin explicar que la key permite consultar cursos y gestionar progreso con los permisos del usuario, se guardará en `$HOME/.config/learnforce/.env` hasta eliminarla o revocarla en LearnForce, y esperar autorización explícita. Pregunta: “¿Me autorizas a leer una vez el portapapeles exclusivamente para validar y guardar esa key? No leeré ni guardaré otro contenido.”
+- Sólo después de una respuesta afirmativa ejecuta `key.ps1 -ClipboardOnly`. Rechaza cualquier contenido sin prefijo `lf_agent_` y nunca muestres el valor.
+- Si no autoriza, no accedas al portapapeles y ofrece `lfkey` como alternativa privada.
+- Como alternativa, el usuario puede ejecutar `lfkey`, que solicita la key de forma interactiva sin leer el portapapeles.
 - Envía la llave con el header `X-API-Key`.
 
 ## Cómo buscar

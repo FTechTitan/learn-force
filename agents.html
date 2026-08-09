@@ -103,7 +103,7 @@
           <p>Copia esta instrucción completa en Codex o Claude Code. El agente detectará su carpeta de skills, descargará LearnForce con sus scripts y comprobará que quedó instalada.</p>
           <div class="agent-code-block agent-install-prompt">
             <div><span>Instrucción recomendada para el agente</span><button type="button" data-copy-target="agentInstallPrompt">Copiar</button></div>
-            <pre id="agentInstallPrompt"><code>Instala y configura la skill LearnForce en este equipo. Ejecuta tú todos los comandos necesarios; no me entregues instrucciones para que yo cree carpetas o archivos.
+            <pre id="agentInstallPrompt"><code>Instala y configura la skill LearnForce en este equipo. Ejecuta tú todos los comandos necesarios; no me entregues instrucciones para que yo cree carpetas o archivos. No leas el portapapeles sin avisarme, explicar el alcance y recibir mi autorización explícita.
 
 1. Detecta si estás ejecutándote como Codex o Claude Code.
 2. Usa la carpeta correspondiente:
@@ -112,21 +112,30 @@
 3. Descarga el archivo principal desde:
    https://learn.techforce.cl/docs/learnforce-skill/SKILL.md
    y guárdalo como SKILL.md dentro de esa carpeta.
-4. Crea la subcarpeta scripts y descarga dentro de ella estos tres archivos:
+4. Crea la subcarpeta scripts y descarga dentro de ella estos cuatro archivos:
    - https://learn.techforce.cl/docs/learnforce-skill/scripts/search.ps1
    - https://learn.techforce.cl/docs/learnforce-skill/scripts/lesson.ps1
    - https://learn.techforce.cl/docs/learnforce-skill/scripts/module-lessons.ps1
-5. Verifica que existan SKILL.md y los tres scripts.
+   - https://learn.techforce.cl/docs/learnforce-skill/scripts/key.ps1
+5. Verifica que existan SKILL.md y los cuatro scripts.
 6. Ejecuta tú mismo estos comandos para dejar preparado el archivo de configuración:
    $config = [IO.Path]::Combine($HOME, '.config', 'learnforce')
    New-Item -ItemType Directory -Force $config | Out-Null
    $envFile = Join-Path $config '.env'
    if (-not (Test-Path $envFile)) { New-Item -ItemType File $envFile | Out-Null }
-7. Verifica tú mismo que la carpeta, el .env, SKILL.md y los tres scripts existan.
-8. Sólo después de completar todo lo anterior, indícame que cree mi llave en https://learn.techforce.cl/agents.html. No me pidas pegarla en el chat.
-9. Déjame únicamente este comando corto, en una sola línea y dentro de un bloque de código, para guardar la llave sin escribirla en el historial:
-   "LEARN_FORCE_API_KEY=$(Read-Host Key)" > ~/.config/learnforce/.env
-10. Tu respuesta final debe confirmar qué dejaste instalado, mostrar el enlace para crear la llave y el único comando anterior. No me delegues ningún otro comando. Indícame si debo reiniciar el agente.</code></pre>
+7. Ejecuta tú mismo:
+   Copy-Item (Join-Path $skill 'scripts\key.ps1') (Join-Path $config 'lfkey.ps1') -Force
+   $profileFile = $PROFILE.CurrentUserAllHosts
+   New-Item -ItemType Directory -Force (Split-Path $profileFile) | Out-Null
+   if (-not (Test-Path $profileFile)) { New-Item -ItemType File $profileFile | Out-Null }
+   $definition = 'function lfkey { & "$HOME/.config/learnforce/lfkey.ps1" }'
+   if (-not (Select-String -LiteralPath $profileFile -SimpleMatch 'function lfkey' -Quiet)) { Add-Content -LiteralPath $profileFile -Value "`n$definition" }
+   . $profileFile
+8. Verifica tú mismo que la carpeta, el .env, SKILL.md, los cuatro scripts y el comando lfkey existan.
+9. Dime: “Crea tu llave en https://learn.techforce.cl/agents.html, cópiala en tu portapapeles y avísame cuando esté lista. Antes de leerla te pediré autorización.”
+10. Cuando avise que está lista, explica que la key permite consultar mis cursos y gestionar mi progreso con mis permisos, quedará en $HOME/.config/learnforce/.env hasta que la elimine o revoque en LearnForce, y pregunta: “¿Me autorizas a leer una vez el portapapeles exclusivamente para validar y guardar esa key? No leeré ni guardaré otro contenido.” Espera mi respuesta.
+11. Sólo si autorizo explícitamente, ejecuta `& (Join-Path $config 'lfkey.ps1') -ClipboardOnly`. Nunca muestres la llave. Si no autorizo, ofrece `lfkey` como alternativa privada.
+12. Indícame si debo reiniciar el agente.</code></pre>
           </div>
           <div class="agent-callout"><span>💡</span><p><strong>Después de instalar:</strong> reinicia el agente o abre una sesión nueva para que descubra la skill <code>learnforce</code>.</p></div>
 
@@ -138,13 +147,13 @@
                 <div><span>Codex · PowerShell</span><button type="button" data-copy-target="installCodexSkill">Copiar</button></div>
                 <pre id="installCodexSkill"><code>$skill="$HOME\.codex\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
 Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -OutFile "$skill\SKILL.md"
-"search","lesson","module-lessons" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
+"search","lesson","module-lessons","key" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
               </div>
               <div class="agent-code-block">
                 <div><span>Claude Code · PowerShell</span><button type="button" data-copy-target="installClaudeSkill">Copiar</button></div>
                 <pre id="installClaudeSkill"><code>$skill="$HOME\.claude\skills\learnforce"; New-Item -ItemType Directory -Force "$skill\scripts" | Out-Null
 Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -OutFile "$skill\SKILL.md"
-"search","lesson","module-lessons" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
+"search","lesson","module-lessons","key" | ForEach-Object { Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/scripts/$_.ps1" -OutFile "$skill\scripts\$_.ps1" }</code></pre>
               </div>
               <p class="agent-openapi"><a href="docs/learnforce-skill/SKILL.md" download>Descargar SKILL.md manualmente →</a></p>
             </div>
@@ -153,13 +162,13 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
 
         <section class="agent-doc-section" id="autenticacion">
           <span class="agent-section-label">PASO 2 · API KEY</span>
-          <h2>Crea la llave y guárdala en el .env</h2>
-          <p>Después de instalar la skill, crea una llave en el panel de esta página. Guárdala en la ubicación universal de LearnForce; la skill y sus scripts leen exactamente ese mismo archivo.</p>
+          <h2>Copia la llave; tu agente hace el resto</h2>
+          <p>Crea la llave y cópiala. Tu agente te explicará qué quiere leer y pedirá autorización antes de acceder una sola vez al portapapeles.</p>
           <div class="agent-code-block">
-            <div><span>Guardar la llave desde PowerShell</span><button type="button" data-copy-target="envAgentKey">Copiar comando</button></div>
-            <pre id="envAgentKey"><code>"LEARN_FORCE_API_KEY=$(Read-Host Key)" > ~/.config/learnforce/.env</code></pre>
+            <div><span>Alternativa manual</span><button type="button" data-copy-target="envAgentKey">Copiar comando</button></div>
+            <pre id="envAgentKey"><code>lfkey</code></pre>
           </div>
-          <div class="agent-callout"><span>✓</span><p>El comando pide la llave de forma interactiva y la guarda en <code>$HOME/.config/learnforce/.env</code>. Así no queda escrita en el historial del terminal.</p></div>
+          <div class="agent-callout"><span>✓</span><p>Sin autorización no se lee el portapapeles. También puedes usar <code>lfkey</code> para ingresarla de forma privada. Ambos métodos guardan en <code>$HOME/.config/learnforce/.env</code>.</p></div>
           <div class="agent-copy-field"><span>Base URL</span><code id="baseUrl">https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1</code><button type="button" data-copy-target="baseUrl">Copiar</button></div>
           <div class="agent-code-block">
             <div><span>Header requerido</span><button type="button" data-copy-target="authHeader">Copiar</button></div>
