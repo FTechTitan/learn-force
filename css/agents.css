@@ -60,6 +60,9 @@
 .agent-tab-panel[hidden] { display: none; }
 .agent-install-prompt { border-color: rgba(75,139,190,.55); box-shadow: 0 14px 35px rgba(0,0,0,.14); }
 .agent-install-prompt pre { white-space: pre-wrap; }
+.agent-compatibility { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 18px 0 4px; padding: 13px 15px; border: 1px solid rgba(249,220,115,.3); border-radius: 10px; background: rgba(48,42,20,.55); font-size: 13px; }
+.agent-compatibility strong { color: #9de5a8; }
+.agent-compatibility span { color: #ffaaa5; }
 .agent-manual-install { margin-top: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 11px; background: rgba(28,32,48,.5); }
 .agent-manual-install summary { padding: 13px 15px; color: #c8d2e3; font-size: 13px; font-weight: 800; cursor: pointer; user-select: none; }
 .agent-manual-install summary:hover { color: var(--text); background: var(--bg-soft); }

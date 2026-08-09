@@ -106,9 +106,10 @@
           <span class="agent-section-label">PASO 1 · REQUERIDO</span>
           <h2>Pídele a tu agente que instale LearnForce</h2>
           <p>Copia esta instrucción completa en Codex o Claude Code. El agente detectará su carpeta de skills, descargará LearnForce con sus scripts y comprobará que quedó instalada.</p>
+          <div class="agent-compatibility"><strong>✓ Funciona en Claude Code y Codex</strong><span>✕ No funciona en Claude Chat, Claude Cowork ni ChatGPT</span></div>
           <div class="agent-code-block agent-install-prompt">
             <div><span>Instrucción recomendada para el agente</span><button type="button" data-copy-target="agentInstallPrompt">Copiar</button></div>
-            <pre id="agentInstallPrompt"><code>Instala y configura la skill LearnForce en este equipo. Ejecuta tú todos los comandos necesarios; no me entregues instrucciones para que yo cree carpetas o archivos. No leas el portapapeles sin avisarme, explicar el alcance y recibir mi autorización explícita.
+            <pre id="agentInstallPrompt"><code>Instala y configura la skill LearnForce en este equipo. Esta instalación sólo funciona en Claude Code y Codex; no funciona en Claude Chat, Claude Cowork ni ChatGPT. Si no estás en Claude Code o Codex, detente e infórmame. Ejecuta tú todos los comandos necesarios; no me entregues instrucciones para que yo cree carpetas o archivos. No leas el portapapeles sin avisarme, explicar el alcance y recibir mi autorización explícita.
 
 1. Detecta si estás ejecutándote como Codex o Claude Code.
 2. Usa la carpeta correspondiente:
