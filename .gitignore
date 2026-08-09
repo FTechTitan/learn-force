@@ -11,3 +11,5 @@ Thumbs.db
 
 # Generated import reports (never commit vault content)
 tmp/
+.env
+.env.local
