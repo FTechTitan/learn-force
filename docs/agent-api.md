@@ -59,7 +59,11 @@ La consulta de una clase devuelve en una sola respuesta `body_markdown`, `transc
 
 ### Búsqueda
 
-Los tres endpoints aceptan `{ "query": "...", "limit": 10 }` y devuelven la misma estructura. `keyword` usa solo Full Text Search; `semantic` genera un embedding; `hybrid` combina ambos rankings. El piloto inicial indexa únicamente título, resumen, curso y módulo de 28 clases de WhatsApp.
+Los tres endpoints aceptan `{ "query": "...", "limit": 10 }` y devuelven la misma estructura. `keyword` usa solo Full Text Search; `semantic` genera un embedding con `text-embedding-3-small`; `hybrid` combina ambos rankings.
+
+El índice cubre exclusivamente Imperio Agéntico: títulos, resúmenes, contenido, transcripciones fragmentadas y nombres de recursos. Cada resultado informa `source_kind`, `chunk_index` y `excerpt`, para que el agente pueda citar la evidencia encontrada. `next_action.path` permite solicitar después la clase completa, que integra video, transcripciones y recursos.
+
+Los vectores se generan con OpenAI y se almacenan y consultan en Supabase mediante pgvector. Learn Force no genera la respuesta final: esa responsabilidad corresponde al agente consumidor.
 
 Actualizar progreso:
 

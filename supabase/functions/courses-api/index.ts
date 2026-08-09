@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") || "";
+const EMBEDDING_MODEL = "text-embedding-3-small";
+const EMBEDDING_DIMENSIONS = 512;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
@@ -145,6 +148,7 @@ async function signedDownload(path: string | null) {
 }
 
 type SearchRow = {
+  document_id: string;
   lesson_id: string;
   course_id: string;
   module_id: string;
@@ -152,6 +156,9 @@ type SearchRow = {
   module_title: string;
   title: string;
   summary: string;
+  source_kind: "metadata" | "content" | "transcript" | "resource";
+  chunk_index: number;
+  content: string;
   score: number;
 };
 
@@ -162,6 +169,7 @@ function searchLimit(value: unknown): number {
 
 function searchResult(row: SearchRow, score = row.score) {
   return {
+    document_id: row.document_id,
     lesson_id: row.lesson_id,
     course_id: row.course_id,
     module_id: row.module_id,
@@ -169,6 +177,9 @@ function searchResult(row: SearchRow, score = row.score) {
     module: row.module_title,
     title: row.title,
     summary: row.summary,
+    source_kind: row.source_kind,
+    chunk_index: row.chunk_index,
+    excerpt: row.content,
     score: Math.round(Number(score || 0) * 10_000) / 10_000,
     next_action: {
       method: "GET",
@@ -178,14 +189,37 @@ function searchResult(row: SearchRow, score = row.score) {
   };
 }
 
+async function requestOpenAIEmbeddings(input: string[]): Promise<number[][]> {
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY no esta configurada.");
+  const openaiResponse = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ input, model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS }),
+  });
+  if (!openaiResponse.ok) {
+    const requestId = openaiResponse.headers.get("x-request-id") || "unknown";
+    throw new Error(`OpenAI embeddings fallo (${openaiResponse.status}, request ${requestId}).`);
+  }
+  const payload = await openaiResponse.json() as { data?: Array<{ index: number; embedding: number[] }> };
+  const embeddings = (payload.data || []).sort((a, b) => a.index - b.index).map((item) => item.embedding);
+  if (embeddings.length !== input.length || embeddings.some((item) => item.length !== EMBEDDING_DIMENSIONS)) {
+    throw new Error("OpenAI devolvio una cantidad o dimension de embeddings inesperada.");
+  }
+  return embeddings;
+}
+
+async function createEmbeddings(input: string[]): Promise<number[][]> {
+  const chunks: string[][] = [];
+  for (let offset = 0; offset < input.length; offset += 16) chunks.push(input.slice(offset, offset + 16));
+  const responses = await Promise.all(chunks.map(requestOpenAIEmbeddings));
+  return responses.flat();
+}
+
 async function queryEmbedding(text: string): Promise<number[]> {
-  const aiGlobal = (globalThis as unknown as {
-    Supabase: { ai: { Session: new (model: string) => { run: (input: string, options: Record<string, boolean>) => Promise<ArrayLike<number>> } } };
-  }).Supabase;
-  if (!aiGlobal?.ai?.Session) throw new Error("Supabase AI no está disponible en este runtime.");
-  const model = new aiGlobal.ai.Session("gte-small");
-  const output = await model.run(text, { mean_pool: true, normalize: true });
-  return Array.from(output);
+  return (await createEmbeddings([text]))[0];
 }
 
 async function keywordSearch(query: string, limit: number): Promise<SearchRow[]> {
@@ -242,16 +276,24 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
     keywordSearch(query, Math.min(25, limit * 3)),
     semanticSearch(embedding, Math.min(25, limit * 3)),
   ]);
-  const maxKeyword = Math.max(...keywordRows.map((row) => Number(row.score || 0)), 0.0001);
   const merged = new Map<string, SearchRow & { keyword_score: number; semantic_score: number }>();
-  keywordRows.forEach((row) => merged.set(row.lesson_id, { ...row, keyword_score: Number(row.score || 0) / maxKeyword, semantic_score: 0 }));
-  semanticRows.forEach((row) => {
+  keywordRows.forEach((row, index) => {
+    if (merged.has(row.lesson_id)) return;
+    const rankScore = 1 - (index / Math.max(keywordRows.length, 1));
+    merged.set(row.lesson_id, { ...row, keyword_score: rankScore, semantic_score: 0 });
+  });
+  semanticRows.forEach((row, index) => {
+    const rankScore = 1 - (index / Math.max(semanticRows.length, 1));
     const current = merged.get(row.lesson_id);
-    if (current) current.semantic_score = Math.max(0, Number(row.score || 0));
-    else merged.set(row.lesson_id, { ...row, keyword_score: 0, semantic_score: Math.max(0, Number(row.score || 0)) });
+    if (current) {
+      // Conserva el fragmento semántico como evidencia y combina ambos rankings por clase.
+      merged.set(row.lesson_id, { ...row, keyword_score: current.keyword_score, semantic_score: rankScore });
+    } else {
+      merged.set(row.lesson_id, { ...row, keyword_score: 0, semantic_score: rankScore });
+    }
   });
   const rows = [...merged.values()]
-    .map((row) => ({ ...row, combined_score: row.keyword_score * 0.45 + row.semantic_score * 0.55 }))
+    .map((row) => ({ ...row, combined_score: row.keyword_score * 0.4 + row.semantic_score * 0.6 }))
     .sort((a, b) => b.combined_score - a.combined_score)
     .slice(0, limit);
   return response(req, {
@@ -260,31 +302,29 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
   });
 }
 
-async function indexSmokeBatch(req: Request, auth: AuthContext) {
-  if (!auth.isAdmin || auth.method !== "jwt") return error(req, 403, "admin_required", "Solo un administrador puede generar el índice piloto.");
+async function indexSearchBatch(req: Request, auth: AuthContext) {
+  if (!auth.isAdmin || auth.method !== "jwt") return error(req, 403, "admin_required", "Solo un administrador puede generar el indice.");
   const body = await parseBody(req);
-  const limit = Math.min(8, Math.max(1, Number(body?.limit || 8)));
+  const limit = Math.min(128, Math.max(1, Number(body?.limit || 128)));
   const { data: documents, error: selectError } = await admin.from("course_search_documents")
-    .select("lesson_id, search_text").is("embedding", null).order("lesson_id").limit(limit);
+    .select("id, content").is("embedding", null).order("id").limit(limit);
   if (selectError) throw selectError;
-  const indexed: string[] = [];
-  const failed: string[] = [];
-  for (const document of documents || []) {
-    try {
-      const embedding = await queryEmbedding(document.search_text);
-      const { error: updateError } = await admin.from("course_search_documents")
-        .update({ embedding, embedded_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq("lesson_id", document.lesson_id);
-      if (updateError) throw updateError;
-      indexed.push(document.lesson_id);
-    } catch (caught) {
-      console.error("index-smoke", document.lesson_id, caught instanceof Error ? caught.message : caught);
-      failed.push(document.lesson_id);
-    }
+  const pending = documents || [];
+  if (pending.length) {
+    const embeddings = await createEmbeddings(pending.map((document) => document.content));
+    const { data: updated, error: updateError } = await admin.rpc("update_course_search_embeddings", {
+      p_updates: pending.map((document, index) => ({ id: document.id, embedding: embeddings[index] })),
+      p_model: EMBEDDING_MODEL,
+    });
+    if (updateError) throw updateError;
+    if (Number(updated) !== pending.length) throw new Error("No se actualizaron todos los embeddings del lote.");
   }
   const { count: remaining } = await admin.from("course_search_documents")
-    .select("lesson_id", { count: "exact", head: true }).is("embedding", null);
-  return response(req, { data: { indexed: indexed.length, failed: failed.length, remaining: remaining || 0 }, meta: { smoke: true, max_batch: 8 } });
+    .select("id", { count: "exact", head: true }).is("embedding", null);
+  return response(req, {
+    data: { indexed: pending.length, remaining: remaining || 0 },
+    meta: { model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS, max_batch: 128 },
+  });
 }
 
 async function route(req: Request, auth: AuthContext, parts: string[]) {
@@ -332,8 +372,8 @@ async function route(req: Request, auth: AuthContext, parts: string[]) {
 
   if (!(await hasCatalogAccess(auth))) return error(req, 403, "course_access_required", "El usuario no tiene acceso aprobado al catálogo.");
 
-  if (req.method === "POST" && parts.length === 2 && parts[0] === "search" && parts[1] === "index-smoke") {
-    return indexSmokeBatch(req, auth);
+  if (req.method === "POST" && parts.length === 2 && parts[0] === "search" && ["index", "index-smoke"].includes(parts[1])) {
+    return indexSearchBatch(req, auth);
   }
 
   if (req.method === "POST" && parts.length === 2 && parts[0] === "search" && ["keyword", "semantic", "hybrid"].includes(parts[1])) {
