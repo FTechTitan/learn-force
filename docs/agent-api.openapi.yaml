@@ -111,7 +111,7 @@ paths:
   /search/semantic:
     post:
       operationId: searchCoursesByMeaning
-      summary: Busca fragmentos de Imperio Agéntico por similitud semántica con embeddings OpenAI
+      summary: Busca fragmentos de cursos por similitud semantica con embeddings OpenAI
       requestBody: { $ref: "#/components/requestBodies/SearchRequest" }
       responses:
         "200": { $ref: "#/components/responses/Success" }
@@ -173,6 +173,13 @@ components:
             properties:
               query: { type: string, minLength: 2, maxLength: 500 }
               limit: { type: integer, minimum: 1, maximum: 25, default: 10 }
+              course_ids:
+                type: array
+                description: Lista opcional de cursos a buscar. Si se omite, busca en todos los cursos accesibles.
+                items: { type: string }
+                examples:
+                  - [poderosa-maquina-pacientes]
+                  - [poderosa-maquina-pacientes, whatsagenda-pro]
   securitySchemes:
     personalApiKey:
       type: apiKey

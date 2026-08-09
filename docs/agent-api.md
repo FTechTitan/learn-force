@@ -61,9 +61,21 @@ La consulta de una clase devuelve en una sola respuesta `body_markdown`, `transc
 
 Los tres endpoints aceptan `{ "query": "...", "limit": 10 }` y devuelven la misma estructura. `keyword` usa solo Full Text Search; `semantic` genera un embedding con `text-embedding-3-small`; `hybrid` combina ambos rankings.
 
-El índice cubre exclusivamente Imperio Agéntico: títulos, resúmenes, contenido, transcripciones fragmentadas y nombres de recursos. Cada resultado informa `source_kind`, `chunk_index` y `excerpt`, para que el agente pueda citar la evidencia encontrada. `next_action.path` permite solicitar después la clase completa, que integra video, transcripciones y recursos.
+Tambien aceptan `course_ids` opcional para limitar la busqueda. Sin `course_ids`, la API busca en todos los cursos accesibles del usuario. Con un curso, busca exclusivamente dentro de ese curso. Con varios cursos, cruza el conocimiento y devuelve un ranking conjunto. Los IDs inexistentes o no accesibles se ignoran sin revelar informacion privada.
+
+```json
+{
+  "query": "como captar pacientes usando WhatsApp",
+  "limit": 10,
+  "course_ids": ["poderosa-maquina-pacientes", "whatsagenda-pro"]
+}
+```
+
+El indice cubre los cursos publicados accesibles: titulos, resumenes, contenido, transcripciones fragmentadas cuando existen y nombres de recursos. Cada resultado informa `source_kind`, `chunk_index` y `excerpt`, para que el agente pueda citar la evidencia encontrada. `next_action.path` permite solicitar despues la clase completa, que integra video, transcripciones y recursos.
 
 Los vectores se generan con OpenAI y se almacenan y consultan en Supabase mediante pgvector. Learn Force no genera la respuesta final: esa responsabilidad corresponde al agente consumidor.
+
+El indice multi-curso cubre Imperio Agentico, La Poderosa Maquina de Pacientes, WhatsAgenda Pro y CAR: titulos, resumenes, contenido, transcripciones fragmentadas cuando existen y recursos con contexto textual. Cada resultado informa `course_id`, `module_id`, `lesson_id`, `source_kind`, `chunk_index`, `excerpt` y `web_url`.
 
 ### Prompts para copiar y pegar
 
@@ -81,6 +93,22 @@ Quiero aprender [tema] desde cero. Créame una ruta de aprendizaje usando las cl
 
 ```text
 Tengo este problema: [describe el problema]. Busca en Imperio Agéntico las clases y recursos que me pueden ayudar y recomiéndame qué hacer primero.
+```
+
+```text
+Busca solo en La Poderosa Maquina de Pacientes como captar pacientes.
+```
+
+```text
+Compara lo que ensenan WhatsAgenda Pro y La Poderosa Maquina de Pacientes sobre WhatsApp.
+```
+
+```text
+Usando todos mis cursos, recomiendame una ruta para captar, responder y agendar pacientes.
+```
+
+```text
+Busca en CAR e Imperio Agentico como validar y automatizar un nuevo servicio.
 ```
 
 Actualizar progreso:

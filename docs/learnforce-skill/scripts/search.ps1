@@ -2,6 +2,7 @@ param(
   [Parameter(Mandatory = $true)][string]$Query,
   [ValidateSet('keyword', 'semantic', 'hybrid')][string]$Mode = 'hybrid',
   [ValidateRange(1, 50)][int]$Limit = 10,
+  [string[]]$CourseIds = @(),
   [string]$EnvFile = ''
 )
 
@@ -21,7 +22,10 @@ function Get-LearnForceKey {
 
 $key = Get-LearnForceKey
 $headers = @{ 'X-API-Key' = $key; 'Content-Type' = 'application/json' }
-$body = @{ query = $Query; limit = $Limit } | ConvertTo-Json
+$normalizedCourseIds = @($CourseIds | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$bodyObject = @{ query = $Query; limit = $Limit }
+if ($normalizedCourseIds.Count -gt 0) { $bodyObject.course_ids = @($normalizedCourseIds) }
+$body = $bodyObject | ConvertTo-Json
 $result = Invoke-RestMethod -Method Post -Uri "$baseUrl/search/$Mode" -Headers $headers -Body $body
 
 foreach ($item in @($result.data)) {

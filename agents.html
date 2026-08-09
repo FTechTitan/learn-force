@@ -254,13 +254,20 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
         <section class="agent-doc-section" id="busqueda">
           <span class="agent-section-label">BÚSQUEDA BETA</span>
           <h2>Encuentra qué estudiar según tu intención</h2>
-          <p>Los tres modos comparten la misma entrada y respuesta. La búsqueda cubre las clases, contenidos, transcripciones y recursos de Imperio Agéntico.</p>
+          <p>Los tres modos comparten la misma entrada y respuesta. La busqueda puede limitarse a un curso, cruzar varios cursos o usar todos los cursos accesibles.</p>
           <div class="agent-code-block">
             <div><span>Buscar por palabras clave</span><button type="button" data-copy-target="searchCurl">Copiar</button></div>
             <pre id="searchCurl"><code>curl -X POST "$BASE_URL/search/keyword" \
   -H "X-API-Key: $LEARN_FORCE_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"query":"quiero aprender agentes de WhatsApp","limit":5}'</code></pre>
+          </div>
+          <div class="agent-code-block">
+            <div><span>Buscar en cursos especificos</span><button type="button" data-copy-target="searchCoursesCurl">Copiar</button></div>
+            <pre id="searchCoursesCurl"><code>curl -X POST "$BASE_URL/search/hybrid" \
+  -H "X-API-Key: $LEARN_FORCE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"captar pacientes por WhatsApp","limit":10,"course_ids":["poderosa-maquina-pacientes","whatsagenda-pro"]}'</code></pre>
           </div>
           <div class="agent-search-modes">
             <div><strong>keyword</strong><span>Más barato</span><p>PostgreSQL Full Text Search. No ejecuta modelos.</p></div>

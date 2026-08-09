@@ -31,6 +31,12 @@ Usa los scripts incluidos en `scripts/`; resuelven autenticación, llamadas y UR
 # Buscar contenido. hybrid es el modo predeterminado.
 & "$PSScriptRoot/scripts/search.ps1" -Query "agentes de WhatsApp" -Limit 10
 
+# Buscar solo en un curso.
+& "$PSScriptRoot/scripts/search.ps1" -Query "captar pacientes" -CourseIds "poderosa-maquina-pacientes"
+
+# Cruzar varios cursos en un ranking conjunto.
+& "$PSScriptRoot/scripts/search.ps1" -Query "WhatsApp y agenda" -CourseIds "poderosa-maquina-pacientes","whatsagenda-pro"
+
 # Ver todas las clases de un módulo en su orden pedagógico.
 & "$PSScriptRoot/scripts/module-lessons.ps1" -CourseId "imperio-agentico" -ModuleId "imperio-agentes-de-whatsapp"
 
@@ -42,7 +48,24 @@ Si el ejecutor no define `$PSScriptRoot`, resuelve estos scripts desde la carpet
 
 En macOS usa los equivalentes `search.sh`, `module-lessons.sh` y `lesson.sh` incluidos en la misma carpeta. Sus argumentos posicionales siguen el orden indicado por cada script.
 
+Para busquedas multi-curso en macOS, el cuarto argumento de `search.sh` acepta `course_ids` separados por coma:
+
+```sh
+./scripts/search.sh "captar pacientes" hybrid 10 "poderosa-maquina-pacientes,whatsagenda-pro"
+```
+
+Cursos principales disponibles para busqueda:
+
+- `imperio-agentico`: agentes, automatizaciones, n8n, Make, Claude Code, OpenClaw y venta de sistemas.
+- `poderosa-maquina-pacientes`: captacion de pacientes, neuromarketing, mensajes, contenidos y Facebook Ads.
+- `whatsagenda-pro`: WhatsApp Business, FanPage, catalogo, etiquetas, respuestas rapidas y metodo PAS.
+- `car-ecosistema-startup`: validacion, startups, ventas, fundraising, unit economics y automatizacion operativa.
+
 Flujo recomendado:
+
+- Si el usuario nombra un curso, pasa ese `course_id` para buscar exclusivamente ahi.
+- Si la pregunta cruza temas complementarios, pasa varios `course_ids` y conserva el origen de cada recomendacion.
+- Si la pregunta es transversal o el usuario dice "todos mis cursos", no pases `course_ids`; la API buscara en todos los cursos accesibles.
 
 1. Ejecuta `search.ps1` con `hybrid` y entre 8 y 12 resultados.
 2. Identifica los módulos relevantes.
@@ -54,6 +77,12 @@ Modos disponibles en `search.ps1`:
 - `hybrid`: opción predeterminada para recomendaciones y rutas de aprendizaje.
 - `keyword`: alternativa económica para términos concretos.
 - `semantic`: para consultas conceptuales o expresadas de forma imprecisa.
+
+Seleccion de cursos:
+
+- Curso especifico: usar solo el `course_id` indicado por el usuario.
+- Varios cursos: elegirlos cuando sus contenidos se complementen, por ejemplo WhatsAgenda Pro + La Poderosa Maquina de Pacientes para captacion y agenda por WhatsApp.
+- Todos los cursos: omitir `course_ids` cuando la pregunta pida una ruta integral o no este claro que un curso baste.
 
 Si necesitas más evidencia, usa los identificadores del resultado para consultar la clase completa en:
 

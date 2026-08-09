@@ -162,9 +162,68 @@ type SearchRow = {
   score: number;
 };
 
+type CourseScope = {
+  requested: string[] | null;
+  allowed: string[];
+  effective: string[];
+};
+
 function searchLimit(value: unknown): number {
   const parsed = Number(value || 10);
   return Number.isFinite(parsed) ? Math.min(25, Math.max(1, Math.trunc(parsed))) : 10;
+}
+
+function parseCourseIds(value: unknown): string[] | null {
+  if (value === undefined || value === null) return null;
+  const raw = Array.isArray(value) ? value : [value];
+  const normalized = raw
+    .flatMap((item) => String(item || "").split(","))
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  const invalid = normalized.find((item) => !/^[a-z0-9][a-z0-9-]{1,80}$/.test(item));
+  if (invalid) throw new Error("invalid_course_id");
+  return [...new Set(normalized)];
+}
+
+async function resolveCourseScope(requested: string[] | null): Promise<CourseScope> {
+  const { data, error: queryError } = await admin.from("courses")
+    .select("id")
+    .eq("is_published", true);
+  if (queryError) throw queryError;
+  const allowed = (data || []).map((course) => course.id);
+  const allowedSet = new Set(allowed);
+  const effective = requested ? requested.filter((courseId) => allowedSet.has(courseId)) : allowed;
+  return { requested, allowed, effective };
+}
+
+function diversifyRows<T extends SearchRow & { combined_score?: number }>(rows: T[], limit: number, courseCount: number): T[] {
+  if (courseCount <= 1) return rows.slice(0, limit);
+  const maxPerCourse = Math.max(2, Math.ceil(limit / courseCount) + 1);
+  const selected: T[] = [];
+  const deferred: T[] = [];
+  const seen = new Set<string>();
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    if (seen.has(row.lesson_id)) continue;
+    const current = counts.get(row.course_id) || 0;
+    if (current < maxPerCourse) {
+      selected.push(row);
+      seen.add(row.lesson_id);
+      counts.set(row.course_id, current + 1);
+    } else {
+      deferred.push(row);
+    }
+    if (selected.length >= limit) return selected;
+  }
+
+  for (const row of deferred) {
+    if (selected.length >= limit) break;
+    if (seen.has(row.lesson_id)) continue;
+    selected.push(row);
+    seen.add(row.lesson_id);
+  }
+  return selected;
 }
 
 function searchResult(row: SearchRow, score = row.score) {
@@ -222,10 +281,18 @@ async function queryEmbedding(text: string): Promise<number[]> {
   return (await createEmbeddings([text]))[0];
 }
 
-async function keywordSearch(query: string, limit: number): Promise<SearchRow[]> {
+async function keywordSearch(query: string, limit: number, courseIds: string[]): Promise<SearchRow[]> {
+  if (courseIds.length > 1) {
+    const perCourseLimit = Math.max(limit, Math.min(25, Math.ceil(limit / courseIds.length) + 8));
+    const responses = await Promise.all(courseIds.map((courseId) =>
+      keywordSearch(query, perCourseLimit, [courseId])
+    ));
+    return responses.flat().sort((a, b) => b.score - a.score);
+  }
   const { data, error: queryError } = await admin.rpc("search_course_documents_keyword", {
     p_query: query,
     p_limit: limit,
+    p_course_ids: courseIds,
   });
   if (queryError) throw queryError;
   return (data || []) as SearchRow[];
@@ -236,20 +303,30 @@ function hasLearningIntent(query: string): boolean {
 }
 
 async function semanticSearch(
-  embedding: number[], limit: number, learningIntent: boolean,
+  embedding: number[], limit: number, learningIntent: boolean, courseIds: string[],
 ): Promise<SearchRow[]> {
+  if (courseIds.length > 1) {
+    const perCourseLimit = Math.max(limit, Math.min(25, Math.ceil(limit / courseIds.length) + 8));
+    const responses = await Promise.all(courseIds.map((courseId) =>
+      semanticSearch(embedding, perCourseLimit, learningIntent, [courseId])
+    ));
+    return responses.flat().sort((a, b) => b.score - a.score);
+  }
   const { data, error: queryError } = await admin.rpc("search_course_documents_semantic", {
     p_embedding: embedding,
     p_limit: limit,
     p_learning_intent: learningIntent,
+    p_course_ids: courseIds,
   });
   if (queryError) throw queryError;
   return (data || []) as SearchRow[];
 }
 
-async function indexedDocumentCount(): Promise<number> {
+async function indexedDocumentCount(courseIds: string[]): Promise<number> {
   const { count } = await admin.from("course_search_documents")
-    .select("lesson_id", { count: "exact", head: true }).not("embedding", "is", null);
+    .select("lesson_id", { count: "exact", head: true })
+    .in("course_id", courseIds)
+    .not("embedding", "is", null);
   return count || 0;
 }
 
@@ -258,31 +335,54 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
   const body = await parseBody(req);
   const query = String(body?.query || "").trim();
   const limit = searchLimit(body?.limit);
+  let requestedCourseIds: string[] | null = null;
+  try {
+    requestedCourseIds = parseCourseIds(body?.course_ids);
+  } catch (caught) {
+    if (caught instanceof Error && caught.message === "invalid_course_id") {
+      return error(req, 422, "validation_error", "course_ids contiene un identificador invalido.");
+    }
+    throw caught;
+  }
   if (query.length < 2 || query.length > 500) {
     return error(req, 422, "validation_error", "query debe tener entre 2 y 500 caracteres.");
   }
+  const scope = await resolveCourseScope(requestedCourseIds);
+  if (!scope.effective.length) {
+    return response(req, {
+      data: [],
+      meta: {
+        mode,
+        query,
+        total: 0,
+        semantic_used: mode !== "keyword",
+        course_ids: [],
+        duration_ms: Math.round(performance.now() - startedAt),
+      },
+    });
+  }
 
   if (mode === "keyword") {
-    const rows = await keywordSearch(query, limit);
+    const rows = diversifyRows(await keywordSearch(query, Math.min(50, limit * 4), scope.effective), limit, scope.effective.length);
     return response(req, {
       data: rows.map((row) => searchResult(row)),
-      meta: { mode, query, total: rows.length, semantic_used: false, duration_ms: Math.round(performance.now() - startedAt) },
+      meta: { mode, query, total: rows.length, semantic_used: false, course_ids: scope.effective, duration_ms: Math.round(performance.now() - startedAt) },
     });
   }
 
   const embedding = await queryEmbedding(query);
   const learningIntent = hasLearningIntent(query);
   if (mode === "semantic") {
-    const rows = await semanticSearch(embedding, limit, learningIntent);
+    const rows = diversifyRows(await semanticSearch(embedding, Math.min(50, limit * 4), learningIntent, scope.effective), limit, scope.effective.length);
     return response(req, {
       data: rows.map((row) => searchResult(row)),
-      meta: { mode, query, total: rows.length, semantic_used: true, indexed_documents: await indexedDocumentCount(), duration_ms: Math.round(performance.now() - startedAt) },
+      meta: { mode, query, total: rows.length, semantic_used: true, course_ids: scope.effective, indexed_documents: await indexedDocumentCount(scope.effective), duration_ms: Math.round(performance.now() - startedAt) },
     });
   }
 
   const [keywordRows, semanticRows] = await Promise.all([
-    keywordSearch(query, Math.min(25, limit * 3)),
-    semanticSearch(embedding, Math.min(25, limit * 3), learningIntent),
+    keywordSearch(query, Math.min(50, limit * 5), scope.effective),
+    semanticSearch(embedding, Math.min(50, limit * 5), learningIntent, scope.effective),
   ]);
   const merged = new Map<string, SearchRow & { keyword_score: number; semantic_score: number }>();
   keywordRows.forEach((row, index) => {
@@ -302,20 +402,38 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
   });
   const rows = [...merged.values()]
     .map((row) => ({ ...row, combined_score: row.keyword_score * 0.4 + row.semantic_score * 0.6 }))
-    .sort((a, b) => b.combined_score - a.combined_score)
-    .slice(0, limit);
+    .sort((a, b) => b.combined_score - a.combined_score);
+  const diversifiedRows = diversifyRows(rows, limit, scope.effective.length);
   return response(req, {
-    data: rows.map((row) => ({ ...searchResult(row, row.combined_score), keyword_score: Math.round(row.keyword_score * 10_000) / 10_000, semantic_score: Math.round(row.semantic_score * 10_000) / 10_000 })),
-    meta: { mode, query, total: rows.length, semantic_used: true, indexed_documents: await indexedDocumentCount(), duration_ms: Math.round(performance.now() - startedAt) },
+    data: diversifiedRows.map((row) => ({ ...searchResult(row, row.combined_score), keyword_score: Math.round(row.keyword_score * 10_000) / 10_000, semantic_score: Math.round(row.semantic_score * 10_000) / 10_000 })),
+    meta: { mode, query, total: diversifiedRows.length, semantic_used: true, course_ids: scope.effective, indexed_documents: await indexedDocumentCount(scope.effective), duration_ms: Math.round(performance.now() - startedAt) },
   });
 }
 
 async function indexSearchBatch(req: Request, auth: AuthContext) {
-  if (!auth.isAdmin || auth.method !== "jwt") return error(req, 403, "admin_required", "Solo un administrador puede generar el indice.");
+  if (!auth.isAdmin) return error(req, 403, "admin_required", "Solo un administrador puede generar el indice.");
   const body = await parseBody(req);
   const limit = Math.min(128, Math.max(1, Number(body?.limit || 128)));
-  const { data: documents, error: selectError } = await admin.from("course_search_documents")
+  let requestedCourseIds: string[] | null = null;
+  try {
+    requestedCourseIds = parseCourseIds(body?.course_ids);
+  } catch (caught) {
+    if (caught instanceof Error && caught.message === "invalid_course_id") {
+      return error(req, 422, "validation_error", "course_ids contiene un identificador invalido.");
+    }
+    throw caught;
+  }
+  const scope = await resolveCourseScope(requestedCourseIds);
+  if (requestedCourseIds && !scope.effective.length) {
+    return response(req, {
+      data: { indexed: 0, remaining: 0 },
+      meta: { model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS, max_batch: 128, course_ids: [] },
+    });
+  }
+  let pendingQuery = admin.from("course_search_documents")
     .select("id, content").is("embedding", null).order("id").limit(limit);
+  if (scope.effective.length) pendingQuery = pendingQuery.in("course_id", scope.effective);
+  const { data: documents, error: selectError } = await pendingQuery;
   if (selectError) throw selectError;
   const pending = documents || [];
   if (pending.length) {
@@ -327,11 +445,13 @@ async function indexSearchBatch(req: Request, auth: AuthContext) {
     if (updateError) throw updateError;
     if (Number(updated) !== pending.length) throw new Error("No se actualizaron todos los embeddings del lote.");
   }
-  const { count: remaining } = await admin.from("course_search_documents")
+  let remainingQuery = admin.from("course_search_documents")
     .select("id", { count: "exact", head: true }).is("embedding", null);
+  if (scope.effective.length) remainingQuery = remainingQuery.in("course_id", scope.effective);
+  const { count: remaining } = await remainingQuery;
   return response(req, {
     data: { indexed: pending.length, remaining: remaining || 0 },
-    meta: { model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS, max_batch: 128 },
+    meta: { model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS, max_batch: 128, course_ids: scope.effective },
   });
 }
 
