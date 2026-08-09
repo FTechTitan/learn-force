@@ -15,10 +15,11 @@ Usa esta skill cuando el usuario quiera aprender, resolver un problema o encontr
 - Nunca muestres la llave, la incluyas en la URL ni la copies a otra ubicación.
 - Si falta la llave, ejecuta tú mismo la creación de `$HOME/.config/learnforce` y de un `.env` vacío sin sobrescribir uno existente. Verifica que ambos existan. No delegues estos comandos al usuario.
 - Durante la instalación, copia `scripts/key.ps1` a `$HOME/.config/learnforce/lfkey.ps1` y registra en `$PROFILE.CurrentUserAllHosts` la función `lfkey` que ejecuta ese script. Preserva el contenido existente del perfil y no dupliques la función.
-- Nunca leas el portapapeles sin explicar que la key permite consultar cursos y gestionar progreso con los permisos del usuario, se guardará en `$HOME/.config/learnforce/.env` hasta eliminarla o revocarla en LearnForce, y esperar autorización explícita. Pregunta: “¿Me autorizas a leer una vez el portapapeles exclusivamente para validar y guardar esa key? No leeré ni guardaré otro contenido.”
-- Sólo después de una respuesta afirmativa ejecuta `key.ps1 -ClipboardOnly`. Rechaza cualquier contenido sin prefijo `lf_agent_` y nunca muestres el valor.
+- Presenta como acción requerida: crear la key, copiarla y responder exactamente `LISTO Y AUTORIZO`. Explica antes que esa respuesta autoriza una lectura única del portapapeles para validar la key contra la API y guardarla en `$HOME/.config/learnforce/.env`; la key permite consultar cursos y gestionar progreso, permanece hasta eliminarla o revocarla, y no se leerá otro contenido.
+- `LISTO Y AUTORIZO` es confirmación suficiente. No pidas una segunda autorización. Ejecuta `key.ps1 -ClipboardOnly`, que prueba la API antes de guardar. Considera éxito sólo `status: ok` y `api_verified: true`; no agregues una verificación casera del archivo. Rechaza contenido sin prefijo `lf_agent_` y nunca muestres el valor.
 - Si no autoriza, no accedas al portapapeles y ofrece `lfkey` como alternativa privada.
 - Como alternativa, el usuario puede ejecutar `lfkey`, que solicita la key de forma interactiva sin leer el portapapeles.
+- Tras verificar la API, continúa en la misma sesión sin pedir reinicio y sugiere tres prompts concretos para comenzar a usar LearnForce.
 - Envía la llave con el header `X-API-Key`.
 
 ## Cómo buscar

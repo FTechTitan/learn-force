@@ -22,6 +22,19 @@ if (-not $key) { $key = Read-Host 'Pega tu API key de LearnForce' }
 if ([string]::IsNullOrWhiteSpace($key)) { throw 'La API key no puede estar vacía.' }
 if ($key -notmatch '^lf_agent_\S{16,}$') { throw 'La API key de LearnForce no tiene un formato válido.' }
 
+try {
+  $null = Invoke-RestMethod -Method Get `
+    -Uri 'https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1/me' `
+    -Headers @{ 'X-API-Key' = $key } `
+    -ErrorAction Stop
+} catch {
+  throw 'La API rechazó la key de LearnForce. No se guardó.'
+}
+
 Set-Content -LiteralPath (Join-Path $config '.env') -Value "LEARN_FORCE_API_KEY=$key" -Encoding UTF8
 Remove-Variable key
-Write-Output 'API key de LearnForce guardada.'
+[pscustomobject]@{
+  status = 'ok'
+  api_verified = $true
+  env_file = (Join-Path $config '.env')
+} | ConvertTo-Json -Compress

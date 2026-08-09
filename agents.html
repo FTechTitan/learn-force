@@ -132,10 +132,21 @@
    if (-not (Select-String -LiteralPath $profileFile -SimpleMatch 'function lfkey' -Quiet)) { Add-Content -LiteralPath $profileFile -Value "`n$definition" }
    . $profileFile
 8. Verifica tú mismo que la carpeta, el .env, SKILL.md, los cuatro scripts y el comando lfkey existan.
-9. Dime: “Crea tu llave en https://learn.techforce.cl/agents.html, cópiala en tu portapapeles y avísame cuando esté lista. Antes de leerla te pediré autorización.”
-10. Cuando avise que está lista, explica que la key permite consultar mis cursos y gestionar mi progreso con mis permisos, quedará en $HOME/.config/learnforce/.env hasta que la elimine o revoque en LearnForce, y pregunta: “¿Me autorizas a leer una vez el portapapeles exclusivamente para validar y guardar esa key? No leeré ni guardaré otro contenido.” Espera mi respuesta.
-11. Sólo si autorizo explícitamente, ejecuta `& (Join-Path $config 'lfkey.ps1') -ClipboardOnly`. Nunca muestres la llave. Si no autorizo, ofrece `lfkey` como alternativa privada.
-12. Indícame si debo reiniciar el agente.</code></pre>
+9. Muestra de forma destacada y sin texto previo:
+   “ACCIÓN REQUERIDA
+   1. Crea tu llave en https://learn.techforce.cl/agents.html
+   2. Presiona copiar para dejarla en el portapapeles.
+   3. Responde exactamente: LISTO Y AUTORIZO
+
+   Al responder LISTO Y AUTORIZO permites leer una vez el portapapeles exclusivamente para validar esa key y, si funciona, guardarla en $HOME/.config/learnforce/.env. La key permite consultar tus cursos y gestionar tu progreso con tus permisos; permanece hasta eliminarla o revocarla en LearnForce. No se leerá ni guardará otro contenido.”
+10. Espera. La respuesta LISTO Y AUTORIZO es la única confirmación necesaria: no vuelvas a pedir autorización.
+11. Tras recibirla, ejecuta `& (Join-Path $config 'lfkey.ps1') -ClipboardOnly`. El script valida la key contra la API antes de guardarla. Nunca muestres la llave. Considera éxito únicamente la salida `status: ok` y `api_verified: true`; no hagas una segunda verificación casera del texto del archivo.
+12. Si la API confirma la key, informa que LearnForce está lista para usar inmediatamente. No pidas reiniciar: ya leíste SKILL.md en esta sesión.
+13. Termina sugiriendo estos prompts:
+   - “Usando LearnForce, recomiéndame las 5 mejores clases de Imperio Agéntico para aprender agentes de WhatsApp.”
+   - “Usando LearnForce, dime cómo hacer [objetivo] según Imperio Agéntico.”
+   - “Usando LearnForce, créame una ruta para aprender [tema] desde cero.”
+14. Si no autoriza el portapapeles, ofrece `lfkey` como alternativa privada.</code></pre>
           </div>
           <div class="agent-callout"><span>💡</span><p><strong>Después de instalar:</strong> reinicia el agente o abre una sesión nueva para que descubra la skill <code>learnforce</code>.</p></div>
 
@@ -162,8 +173,8 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
 
         <section class="agent-doc-section" id="autenticacion">
           <span class="agent-section-label">PASO 2 · API KEY</span>
-          <h2>Copia la llave; tu agente hace el resto</h2>
-          <p>Crea la llave y cópiala. Tu agente te explicará qué quiere leer y pedirá autorización antes de acceder una sola vez al portapapeles.</p>
+          <h2>Copia la llave y responde “LISTO Y AUTORIZO”</h2>
+          <p>Tu agente mostrará tres pasos destacados. Esa única respuesta autoriza una lectura del portapapeles, la validación contra la API y el guardado seguro. No habrá una segunda confirmación.</p>
           <div class="agent-code-block">
             <div><span>Alternativa manual</span><button type="button" data-copy-target="envAgentKey">Copiar comando</button></div>
             <pre id="envAgentKey"><code>lfkey</code></pre>
