@@ -1,0 +1,208 @@
+openapi: 3.1.0
+info:
+  title: Learn Force Courses API
+  version: 1.0.0
+  description: API autenticada para que agentes consulten cursos y gestionen el progreso de su usuario.
+servers:
+  - url: https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1
+security:
+  - personalApiKey: []
+  - userJwt: []
+paths:
+  /me:
+    get:
+      operationId: getCurrentUser
+      summary: Identifica al usuario autenticado
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /courses:
+    get:
+      operationId: listCourses
+      summary: Lista los cursos publicados accesibles
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /courses/{courseId}:
+    get:
+      operationId: getCourse
+      summary: Obtiene un curso
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /courses/{courseId}/modules:
+    get:
+      operationId: listModules
+      summary: Lista los módulos de un curso
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /courses/{courseId}/modules/{moduleId}:
+    get:
+      operationId: getModule
+      summary: Obtiene un módulo
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+        - $ref: "#/components/parameters/ModuleId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /courses/{courseId}/modules/{moduleId}/lessons:
+    get:
+      operationId: listLessons
+      summary: Lista las clases de un módulo
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+        - $ref: "#/components/parameters/ModuleId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /courses/{courseId}/modules/{moduleId}/lessons/{lessonId}:
+    get:
+      operationId: getLesson
+      summary: Obtiene video, contenido, transcripciones y recursos de una clase
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+        - $ref: "#/components/parameters/ModuleId"
+        - $ref: "#/components/parameters/LessonId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /progress:
+    get:
+      operationId: listProgress
+      summary: Lista el progreso del usuario
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /progress/{itemId}:
+    put:
+      operationId: updateProgress
+      summary: Actualiza el progreso de una actividad o clase
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                completed: { type: boolean }
+                code: { type: string, maxLength: 100000 }
+              anyOf:
+                - required: [completed]
+                - required: [code]
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /api-keys:
+    get:
+      operationId: listApiKeys
+      summary: Lista claves personales; requiere JWT
+      security: [{ userJwt: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+    post:
+      operationId: createApiKey
+      summary: Crea una clave personal y muestra su secreto una vez; requiere JWT
+      security: [{ userJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80 }
+                expires_at: { type: string, format: date-time }
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /api-keys/{keyId}:
+    delete:
+      operationId: revokeApiKey
+      summary: Revoca una clave personal; requiere JWT
+      security: [{ userJwt: [] }]
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Clave revocada }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    personalApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    userJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CourseId:
+      name: courseId
+      in: path
+      required: true
+      schema: { type: string }
+    ModuleId:
+      name: moduleId
+      in: path
+      required: true
+      schema: { type: string }
+    LessonId:
+      name: lessonId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data: {}
+        meta: { type: object, additionalProperties: true }
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+  responses:
+    Success:
+      description: Operación exitosa
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SuccessEnvelope" }
+    Unauthorized:
+      description: Credencial ausente o inválida
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    Forbidden:
+      description: El usuario no tiene acceso al catálogo
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    ValidationError:
+      description: Entrada semánticamente inválida
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
