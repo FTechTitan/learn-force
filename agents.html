@@ -7,7 +7,7 @@
   <title>Conecta tu agente · TechForce Learn</title>
   <link rel="icon" href="assets/pwa/favicon-64.png" />
   <link rel="stylesheet" href="css/styles.css?v=20260809-agent-tabs-v2" />
-  <link rel="stylesheet" href="css/agents.css?v=20260809-agent-tabs-v2" />
+  <link rel="stylesheet" href="css/agents.css?v=20260809-macos-v1" />
 </head>
 <body class="agents-body">
   <header class="agents-topbar">
@@ -108,7 +108,7 @@
           <p>Copia esta instrucción completa en Codex o Claude Code. El agente detectará su carpeta de skills, descargará LearnForce con sus scripts y comprobará que quedó instalada.</p>
           <div class="agent-compatibility"><strong>✓ Funciona en Claude Code y Codex</strong><span>✕ No funciona en Claude Chat, Claude Cowork ni ChatGPT</span></div>
           <div class="agent-code-block agent-install-prompt">
-            <div><span>Instrucción recomendada para el agente</span><button type="button" data-copy-target="agentInstallPrompt">Copiar</button></div>
+            <div><span>Windows · PowerShell</span><button type="button" data-copy-target="agentInstallPrompt">Copiar para Windows</button></div>
             <pre id="agentInstallPrompt"><code>Instala y configura la skill LearnForce en este equipo. Esta instalación sólo funciona en Claude Code y Codex; no funciona en Claude Chat, Claude Cowork ni ChatGPT. Si no estás en Claude Code o Codex, detente e infórmame. Ejecuta tú todos los comandos necesarios; no me entregues instrucciones para que yo cree carpetas o archivos. No leas el portapapeles sin avisarme, explicar el alcance y recibir mi autorización explícita.
 
 1. Detecta si estás ejecutándote como Codex o Claude Code.
@@ -153,6 +153,27 @@
    - “Usando LearnForce, dime cómo hacer [objetivo] según Imperio Agéntico.”
    - “Usando LearnForce, créame una ruta para aprender [tema] desde cero.”
 14. Si no autoriza el portapapeles, ofrece dos alternativas: ejecutar `lfkey` o guardar manualmente una línea `LEARN_FORCE_API_KEY=SU_LLAVE` en `$HOME/.config/learnforce/.env`. No pidas que comparta la llave en el chat.</code></pre>
+          </div>
+          <div class="agent-code-block agent-install-prompt">
+            <div><span>macOS · Terminal</span><button type="button" data-copy-target="agentInstallPromptMac">Copiar para macOS</button></div>
+            <pre id="agentInstallPromptMac"><code>Instala y configura la skill LearnForce en este Mac. Sólo funciona en Claude Code y Codex; si no estás en una de esas aplicaciones, detente e infórmame. Ejecuta tú todos los comandos. No leas el portapapeles sin explicar antes el alcance y recibir mi autorización.
+
+1. Detecta si eres Codex o Claude Code y usa respectivamente `$HOME/.codex/skills/learnforce` o `$HOME/.claude/skills/learnforce`.
+2. Crea `scripts` y descarga `https://learn.techforce.cl/docs/learnforce-skill/SKILL.md` como `SKILL.md`. Descarga también `search.sh`, `lesson.sh`, `module-lessons.sh` y `key.sh` desde `https://learn.techforce.cl/docs/learnforce-skill/scripts/NOMBRE`.
+3. Da permiso de ejecución a los cuatro scripts con `chmod +x` y verifica que existan.
+4. Crea sin sobrescribir `$HOME/.config/learnforce/.env`. Copia `scripts/key.sh` como `$HOME/.config/learnforce/lfkey` y dale permiso de ejecución.
+5. Agrega al perfil de la shell activa, sin duplicarlo, `alias lfkey="$HOME/.config/learnforce/lfkey"`. Conserva todo el perfil y cárgalo.
+6. Muestra de forma destacada y sin texto previo:
+   “ACCIÓN REQUERIDA
+   1. Crea tu llave en https://learn.techforce.cl/agents.html
+   2. Presiona copiar para dejarla en el portapapeles.
+   3. Responde exactamente: LISTO
+
+   Al responder LISTO permites leer una vez el portapapeles exclusivamente para validar esa key y guardarla en $HOME/.config/learnforce/.env. No se leerá ni guardará otro contenido.”
+7. Espera. LISTO es la única confirmación necesaria; no vuelvas a pedir autorización.
+8. Al recibir LISTO ejecuta `$HOME/.config/learnforce/lfkey --clipboard-only`. Nunca muestres la llave. Sólo considera éxito `status: ok` y `api_verified: true`.
+9. Si funciona, informa que LearnForce está lista sin reiniciar y sugiere tres prompts concretos para comenzar.
+10. Si no autoriza el portapapeles, ofrece ejecutar `lfkey` o guardar manualmente `LEARN_FORCE_API_KEY=SU_LLAVE` en `$HOME/.config/learnforce/.env`. Nunca pidas la llave en el chat.</code></pre>
           </div>
           <div class="agent-callout"><span>✓</span><p><strong>Sin reiniciar:</strong> el mismo agente puede usar LearnForce porque ya leyó su <code>SKILL.md</code> durante la instalación.</p></div>
 
@@ -303,6 +324,6 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js?v=20260809-agent-portal"></script>
-  <script src="js/agents.js?v=20260809-agent-tabs-v2"></script>
+  <script src="js/agents.js?v=20260809-macos-v1"></script>
 </body>
 </html>

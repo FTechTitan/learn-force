@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+query=${1:-}; mode=${2:-hybrid}; limit=${3:-10}
+[ -n "$query" ] || { echo 'Uso: search.sh "consulta" [hybrid|keyword|semantic] [limite]' >&2; exit 2; }
+case "$mode" in hybrid|keyword|semantic) ;; *) echo 'Modo invalido.' >&2; exit 2;; esac
+env_file=${LEARN_FORCE_ENV_FILE:-"$HOME/.config/learnforce/.env"}; key=${LEARN_FORCE_API_KEY:-}
+if [ -z "$key" ] && [ -f "$env_file" ]; then key=$(sed -n 's/^LEARN_FORCE_API_KEY=//p' "$env_file" | head -n 1 | tr -d '\r"' | sed "s/^'//;s/'$//"); fi
+[ -n "$key" ] || { echo "LEARN_FORCE_API_KEY no esta definida en $env_file" >&2; exit 1; }
+payload=$(LF_QUERY="$query" LF_LIMIT="$limit" osascript -l JavaScript -e 'ObjC.import("Foundation"); JSON.stringify({query: ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("LF_QUERY")), limit: Number(ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("LF_LIMIT")))})' 2>/dev/null)
+curl --fail --silent --show-error -H "X-API-Key: $key" -H 'Content-Type: application/json' -d "$payload" "https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1/search/$mode"

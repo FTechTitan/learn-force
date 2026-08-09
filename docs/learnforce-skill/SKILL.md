@@ -14,9 +14,10 @@ Usa esta skill cuando el usuario quiera aprender, resolver un problema o encontr
 - Lee la llave desde la variable `LEARN_FORCE_API_KEY` o desde `$HOME/.config/learnforce/.env`. Ésta es la ubicación canónica en todos los sistemas.
 - Nunca muestres la llave, la incluyas en la URL ni la copies a otra ubicación.
 - Si falta la llave, ejecuta tú mismo la creación de `$HOME/.config/learnforce` y de un `.env` vacío sin sobrescribir uno existente. Verifica que ambos existan. No delegues estos comandos al usuario.
-- Durante la instalación, copia `scripts/key.ps1` a `$HOME/.config/learnforce/lfkey.ps1` y registra en `$PROFILE.CurrentUserAllHosts` la función `lfkey` que ejecuta ese script. Preserva el contenido existente del perfil y no dupliques la función.
+- En Windows usa los scripts `.ps1`: copia `scripts/key.ps1` a `$HOME/.config/learnforce/lfkey.ps1` y registra en `$PROFILE.CurrentUserAllHosts` la función `lfkey` que lo ejecuta.
+- En macOS usa los scripts `.sh`: copia `scripts/key.sh` a `$HOME/.config/learnforce/lfkey`, aplica `chmod +x` y registra el alias `lfkey` en el perfil de la shell activa. Preserva siempre el perfil y no dupliques la definición.
 - Presenta como acción requerida: crear la key, copiarla y responder exactamente `LISTO`. Explica antes que esa respuesta autoriza una lectura única del portapapeles para validar la key contra la API y guardarla en `$HOME/.config/learnforce/.env`; la key permite consultar cursos y gestionar progreso, permanece hasta eliminarla o revocarla, y no se leerá otro contenido.
-- `LISTO` es confirmación suficiente. No pidas una segunda autorización. Ejecuta `key.ps1 -ClipboardOnly`, que prueba la API antes de guardar. Considera éxito sólo `status: ok` y `api_verified: true`; no agregues una verificación casera del archivo. Rechaza contenido sin prefijo `lf_agent_` y nunca muestres el valor.
+- `LISTO` es confirmación suficiente. No pidas una segunda autorización. Ejecuta `key.ps1 -ClipboardOnly` en Windows o `key.sh --clipboard-only` en macOS; ambos prueban la API antes de guardar. Considera éxito sólo `status: ok` y `api_verified: true`; no agregues una verificación casera del archivo. Rechaza contenido sin prefijo `lf_agent_` y nunca muestres el valor.
 - Si no autoriza, no accedas al portapapeles. Ofrece ejecutar `lfkey` o guardar manualmente `LEARN_FORCE_API_KEY=SU_LLAVE` en `$HOME/.config/learnforce/.env`; nunca pidas la llave en el chat.
 - Como alternativa, el usuario puede ejecutar `lfkey`, que solicita la key de forma interactiva sin leer el portapapeles.
 - Tras verificar la API, continúa en la misma sesión sin pedir reinicio y sugiere tres prompts concretos para comenzar a usar LearnForce.
@@ -38,6 +39,8 @@ Usa los scripts incluidos en `scripts/`; resuelven autenticación, llamadas y UR
 ```
 
 Si el ejecutor no define `$PSScriptRoot`, resuelve estos scripts desde la carpeta que contiene este `SKILL.md`.
+
+En macOS usa los equivalentes `search.sh`, `module-lessons.sh` y `lesson.sh` incluidos en la misma carpeta. Sus argumentos posicionales siguen el orden indicado por cada script.
 
 Flujo recomendado:
 
