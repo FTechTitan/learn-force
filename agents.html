@@ -7,7 +7,7 @@
   <title>Conecta tu agente · TechForce Learn</title>
   <link rel="icon" href="assets/pwa/favicon-64.png" />
   <link rel="stylesheet" href="css/styles.css?v=20260809-agent-tabs-v2" />
-  <link rel="stylesheet" href="css/agents.css?v=20260809-macos-v1" />
+  <link rel="stylesheet" href="css/agents.css?v=20260809-macos-v2" />
 </head>
 <body class="agents-body">
   <header class="agents-topbar">
@@ -156,10 +156,10 @@
           </div>
           <div class="agent-code-block agent-install-prompt">
             <div><span>macOS · Terminal</span><button type="button" data-copy-target="agentInstallPromptMac">Copiar para macOS</button></div>
-            <pre id="agentInstallPromptMac"><code>Instala y configura la skill LearnForce en este Mac. Sólo funciona en Claude Code y Codex; si no estás en una de esas aplicaciones, detente e infórmame. Ejecuta tú todos los comandos. No leas el portapapeles sin explicar antes el alcance y recibir mi autorización.
+            <pre id="agentInstallPromptMac"><code>Instala y configura la skill LearnForce en este Mac usando únicamente herramientas nativas de macOS y descargas por HTTPS. No instales PowerShell, Homebrew, jq ni ninguna dependencia. Usa `/bin/sh`, `curl`, `pbpaste` y `osascript`. Sólo funciona en Claude Code y Codex; si no estás en una de esas aplicaciones, detente e infórmame. Ejecuta tú todos los comandos. No leas el portapapeles sin explicar antes el alcance y recibir mi autorización.
 
 1. Detecta si eres Codex o Claude Code y usa respectivamente `$HOME/.codex/skills/learnforce` o `$HOME/.claude/skills/learnforce`.
-2. Crea `scripts` y descarga `https://learn.techforce.cl/docs/learnforce-skill/SKILL.md` como `SKILL.md`. Descarga también `search.sh`, `lesson.sh`, `module-lessons.sh` y `key.sh` desde `https://learn.techforce.cl/docs/learnforce-skill/scripts/NOMBRE`.
+2. Crea `scripts` y usa `curl --fail --location` para descargar por HTTPS `https://learn.techforce.cl/docs/learnforce-skill/SKILL.md` como `SKILL.md`. Descarga del mismo modo `search.sh`, `lesson.sh`, `module-lessons.sh` y `key.sh` desde `https://learn.techforce.cl/docs/learnforce-skill/scripts/NOMBRE`.
 3. Da permiso de ejecución a los cuatro scripts con `chmod +x` y verifica que existan.
 4. Crea sin sobrescribir `$HOME/.config/learnforce/.env`. Copia `scripts/key.sh` como `$HOME/.config/learnforce/lfkey` y dale permiso de ejecución.
 5. Agrega al perfil de la shell activa, sin duplicarlo, `alias lfkey="$HOME/.config/learnforce/lfkey"`. Conserva todo el perfil y cárgalo.
@@ -324,6 +324,6 @@ Invoke-WebRequest "https://learn.techforce.cl/docs/learnforce-skill/SKILL.md" -O
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js?v=20260809-agent-portal"></script>
-  <script src="js/agents.js?v=20260809-macos-v1"></script>
+  <script src="js/agents.js?v=20260809-macos-v2"></script>
 </body>
 </html>
