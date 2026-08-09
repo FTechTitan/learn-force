@@ -81,7 +81,7 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260730-access-requests");
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260809-module-pages");
         let refrescadoPorSw = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refrescadoPorSw) return;
@@ -210,6 +210,7 @@
     indiceActual = -1;
     mediaActual = null;
     moduloExpandidoId = null;
+    paginaModuloId = null;
     quizRespuesta = null;
     exercise.classList.add("hidden");
     mediaPanel.classList.add("hidden");
@@ -236,6 +237,7 @@
     indiceActual = -1;
     mediaActual = null;
     moduloExpandidoId = null;
+    paginaModuloId = null;
     quizRespuesta = null;
     exercise.classList.add("hidden");
     mediaPanel.classList.add("hidden");
@@ -267,6 +269,7 @@
     indiceActual = -1;
     mediaActual = null;
     moduloExpandidoId = null;
+    paginaModuloId = null;
     quizRespuesta = null;
     localStorage.removeItem(COURSE_STORAGE_KEY);
     setHashSilencioso("");
@@ -288,6 +291,7 @@
     localStorage.setItem(COURSE_STORAGE_KEY, cursoActual.id);
     reconstruirEjerciciosPlanos();
     moduloExpandidoId = ruta.moduleId || null;
+    paginaModuloId = ruta.moduleId || null;
     actualizarMarcaCurso();
     pintarSelectorCursos();
     renderSidebar();
@@ -444,6 +448,7 @@
   let indiceActual = -1;
   let mediaActual = null;  // id de la clase de media abierta ("curso" o moduloId)
   let moduloExpandidoId = null;
+  let paginaModuloId = null;
   let quizRespuesta = null;
 
   // --- Inicializa el editor CodeMirror -------------------------------------
@@ -518,15 +523,7 @@
       header.innerHTML = `<span class="emoji">${modulo.emoji}</span> ${modulo.titulo}
         <span class="modulo-progress">${clasesModulo.length ? `${totalClasesModulo} clases` : `${completadosModulo}/${totalModulo}`}</span>`;
       header.classList.add("clickable");
-      header.addEventListener("click", () => {
-        moduloExpandidoId = expandido ? null : modulo.id;
-        if (cursoActual) {
-          setHashSilencioso(moduloExpandidoId
-            ? hashModulo(slugCurso(cursoActual), modulo.id)
-            : hashCurso(slugCurso(cursoActual)));
-        }
-        renderSidebar();
-      });
+      header.addEventListener("click", () => abrirPaginaModulo(modulo.id));
       divMod.appendChild(header);
 
       // Contenido del módulo: teoría, recursos externos y media directa si existe.
@@ -618,6 +615,73 @@
     return modulos.some((modulo) => clasesMediaModulo(modulo).length);
   }
 
+  function segundosDuracion(value) {
+    if (!value) return 0;
+    const parts = String(value).trim().split(":").map(Number);
+    if (!parts.length || parts.some((part) => !Number.isFinite(part))) return 0;
+    return parts.reduce((total, part) => total * 60 + part, 0);
+  }
+
+  function formatoDuracionTotal(seconds) {
+    const total = Math.round(Number(seconds) || 0);
+    if (!total) return "Duración no informada";
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.ceil((total % 3600) / 60);
+    return hours ? `${hours} h${minutes ? ` ${minutes} min` : ""}` : `${minutes} min`;
+  }
+
+  function duracionModulo(modulo) {
+    return clasesMediaModulo(modulo).reduce((total, clase) => total + segundosDuracion(clase.videoDuration), 0);
+  }
+
+  function textoPlanoMarkdown(markdown, limit = 420) {
+    const template = document.createElement("template");
+    template.innerHTML = renderMarkdownSeguro(markdown || "");
+    const text = (template.content.textContent || "").replace(/\s+/g, " ").trim();
+    return text.length > limit ? `${text.slice(0, limit).trim()}…` : text;
+  }
+
+  function abrirPaginaModulo(moduleId) {
+    if (!cursoActual || !modulos.some((item) => item.id === moduleId)) return;
+    paginaModuloId = moduleId;
+    moduloExpandidoId = moduleId;
+    mediaActual = null;
+    ejercicioActual = null;
+    indiceActual = -1;
+    setHashSilencioso(hashModulo(slugCurso(cursoActual), moduleId));
+    exercise.classList.add("hidden");
+    mediaPanel.classList.add("hidden");
+    welcome.classList.remove("hidden");
+    pintarWelcome();
+    renderSidebar();
+    document.querySelector(".workspace")?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function pintarPaginaModulo(modulo) {
+    const clases = clasesMediaModulo(modulo);
+    let lessonNumber = 0;
+    const contenidos = clases.length ? clases.map((clase) => {
+      if (clase.lessonKind === "section") return `<div class="course-outline-section">${escaparHtml(clase.titulo)}</div>`;
+      lessonNumber += 1;
+      return `<button type="button" class="course-outline-lesson" data-module-id="${escaparHtml(modulo.id)}" data-lesson-id="${escaparHtml(clase.id)}">
+        <span class="course-outline-number">${lessonNumber}</span>
+        <span class="course-outline-copy"><strong>${escaparHtml(clase.titulo)}</strong><span>${escaparHtml(clase.resumen || "Descripción pendiente de revisión editorial.")}</span><small>${clase.videoDuration ? escaparHtml(clase.videoDuration) : "Duración no informada"}${clase.hasTranscript ? " · Transcripción disponible" : ""}</small></span>
+        <span class="course-outline-open">Ver clase →</span>
+      </button>`;
+    }).join("") : (modulo.ejercicios || []).map((ejercicio, index) => `<button type="button" class="course-outline-lesson" data-exercise-id="${escaparHtml(ejercicio.id)}"><span class="course-outline-number">${index + 1}</span><span class="course-outline-copy"><strong>${escaparHtml(ejercicio.titulo)}</strong><span>Actividad práctica del módulo.</span></span><span class="course-outline-open">Abrir →</span></button>`).join("");
+    const totalClases = clases.filter((clase) => clase.lessonKind !== "section").length;
+    const descripcion = modulo.overviewMarkdown || modulo.intro || `Contenidos y actividades de ${modulo.titulo}.`;
+    welcome.className = "welcome course-overview module-page";
+    welcome.innerHTML = `<button type="button" class="course-back" data-module-back>← ${escaparHtml(cursoActual.titulo)}</button>
+      <section class="course-hero module-hero"><div class="course-hero-icon">${modulo.emoji || "📦"}</div><div><span class="course-eyebrow">Módulo</span><h2>${escaparHtml(modulo.titulo)}</h2><div class="module-description">${renderMarkdownSeguro(descripcion)}</div></div></section>
+      <div class="course-stats"><span><strong>${totalClases || (modulo.ejercicios || []).length}</strong> ${totalClases ? "clases" : "actividades"}</span><span><strong>${formatoDuracionTotal(duracionModulo(modulo))}</strong> de duración total</span></div>
+      <div class="course-program-head"><div><span class="course-eyebrow">Clases</span><h3>Contenido del módulo</h3></div><p>Cada clase incluye su descripción y acceso directo.</p></div>
+      <div class="course-outline-lessons">${contenidos || '<p class="course-empty-module">Contenido próximamente.</p>'}</div>`;
+    welcome.querySelector("[data-module-back]").addEventListener("click", () => { paginaModuloId = null; setHashSilencioso(hashCurso(slugCurso(cursoActual))); pintarWelcome(); renderSidebar(); });
+    welcome.querySelectorAll("[data-lesson-id]").forEach((button) => button.addEventListener("click", () => abrirClaseMedia(button.dataset.moduleId, button.dataset.lessonId)));
+    welcome.querySelectorAll("[data-exercise-id]").forEach((button) => button.addEventListener("click", () => { const index = ejerciciosPlanos.findIndex((ejercicio) => ejercicio.id === button.dataset.exerciseId); if (index >= 0) abrirEjercicio(index); }));
+  }
+
   function pintarWelcome() {
     if (!cursoActual) {
       const sinAcceso = usuarioActual && estadoAcceso.status !== "approved";
@@ -672,6 +736,15 @@
       return;
     }
 
+    if (paginaModuloId) {
+      const modulo = (cursoActual.modulos || []).find((item) => item.id === paginaModuloId);
+      if (modulo) {
+        pintarPaginaModulo(modulo);
+        return;
+      }
+      paginaModuloId = null;
+    }
+
     const modulosCurso = cursoActual.modulos || [];
     const totalClases = modulosCurso.reduce((total, modulo) =>
       total + clasesMediaModulo(modulo).filter((clase) => clase.lessonKind !== "section").length, 0);
@@ -679,44 +752,15 @@
     const totalTranscripciones = modulosCurso.reduce((total, modulo) =>
       total + clasesMediaModulo(modulo).filter((clase) => clase.hasTranscript).length, 0);
 
-    const programa = modulosCurso.map((modulo, moduleIndex) => {
+    const totalDuracion = modulosCurso.reduce((total, modulo) => total + duracionModulo(modulo), 0);
+    const programa = modulosCurso.map((modulo) => {
       const clases = clasesMediaModulo(modulo);
-      let numero = 0;
-      const lecciones = clases.length
-        ? clases.map((clase) => {
-            if (clase.lessonKind === "section") {
-              return `<div class="course-outline-section">${escaparHtml(clase.titulo)}</div>`;
-            }
-            numero += 1;
-            const resumen = clase.resumen || `Aprende los conceptos, herramientas y pasos prácticos de “${clase.titulo}”.`;
-            return `<button type="button" class="course-outline-lesson" data-module-id="${escaparHtml(modulo.id)}" data-lesson-id="${escaparHtml(clase.id)}">
-              <span class="course-outline-number">${numero}</span>
-              <span class="course-outline-copy">
-                <strong>${escaparHtml(clase.titulo)}</strong>
-                <span>${escaparHtml(resumen)}</span>
-                <small>${clase.videoDuration ? escaparHtml(clase.videoDuration) : "Clase"}${clase.hasTranscript ? " · Transcripción disponible" : ""}</small>
-              </span>
-              <span class="course-outline-open">Abrir →</span>
-            </button>`;
-          }).join("")
-        : (modulo.ejercicios || []).map((ejercicio, index) => `
-            <button type="button" class="course-outline-lesson" data-exercise-id="${escaparHtml(ejercicio.id)}">
-              <span class="course-outline-number">${index + 1}</span>
-              <span class="course-outline-copy"><strong>${escaparHtml(ejercicio.titulo)}</strong><span>Actividad práctica para aplicar lo aprendido en este módulo.</span></span>
-              <span class="course-outline-open">Abrir →</span>
-            </button>`).join("");
-      const intro = modulo.overviewMarkdown || modulo.intro || "Revisa las clases y actividades de este módulo.";
-      return `<details class="course-module-card" ${moduleIndex === 0 ? "open" : ""}>
-        <summary>
-          <span class="course-module-emoji">${modulo.emoji || "📦"}</span>
-          <span><strong>${escaparHtml(modulo.titulo)}</strong><small>${clases.filter((c) => c.lessonKind !== "section").length || (modulo.ejercicios || []).length} contenidos</small></span>
-          <span class="course-module-chevron">⌄</span>
-        </summary>
-        <div class="course-module-body">
-          <div class="course-module-intro">${renderMarkdownSeguro(intro)}</div>
-          <div class="course-outline-lessons">${lecciones || '<p class="course-empty-module">Contenido próximamente.</p>'}</div>
-        </div>
-      </details>`;
+      const intro = modulo.overviewMarkdown || modulo.intro || `Contenidos de ${modulo.titulo}.`;
+      const count = clases.filter((clase) => clase.lessonKind !== "section").length || (modulo.ejercicios || []).length;
+      return `<article class="course-module-card course-module-overview">
+        <div class="course-module-summary"><span class="course-module-emoji">${modulo.emoji || "📦"}</span><div><strong>${escaparHtml(modulo.titulo)}</strong><p>${escaparHtml(textoPlanoMarkdown(intro) || `Contenidos de ${modulo.titulo}.`)}</p><small>${count} contenidos · ${formatoDuracionTotal(duracionModulo(modulo))}</small></div></div>
+        <button type="button" class="btn btn-secondary" data-module-page="${escaparHtml(modulo.id)}">Ver módulo →</button>
+      </article>`;
     }).join("");
 
     welcome.className = "welcome course-overview";
@@ -733,21 +777,14 @@
       <div class="course-stats">
         <span><strong>${modulosCurso.length}</strong> módulos</span>
         <span><strong>${totalClases || totalActividades}</strong> ${totalClases ? "clases" : "actividades"}</span>
+        <span><strong>${formatoDuracionTotal(totalDuracion)}</strong> de duración total</span>
         ${totalTranscripciones ? `<span><strong>${totalTranscripciones}</strong> transcripciones</span>` : ""}
       </div>
-      <div class="course-program-head"><div><span class="course-eyebrow">Contenido</span><h3>Todo lo que verás</h3></div><p>Despliega un módulo para revisar cada clase y su resumen.</p></div>
+      <div class="course-program-head"><div><span class="course-eyebrow">Contenido</span><h3>Todo lo que verás</h3></div><p>Entra a un módulo para ver sus clases, descripciones y duración.</p></div>
       <div class="course-program">${programa}</div>`;
 
     welcome.querySelector("[data-course-back]").addEventListener("click", mostrarCatalogo);
-    welcome.querySelectorAll("[data-lesson-id]").forEach((btn) => {
-      btn.addEventListener("click", () => abrirClaseMedia(btn.dataset.moduleId, btn.dataset.lessonId));
-    });
-    welcome.querySelectorAll("[data-exercise-id]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const index = ejerciciosPlanos.findIndex((ejercicio) => ejercicio.id === btn.dataset.exerciseId);
-        if (index >= 0) abrirEjercicio(index);
-      });
-    });
+    welcome.querySelectorAll("[data-module-page]").forEach((button) => button.addEventListener("click", () => abrirPaginaModulo(button.dataset.modulePage)));
   }
 
   // --- Clases en audio/video -----------------------------------------------
@@ -1175,6 +1212,7 @@
     exercise.classList.add("hidden");
     mediaPanel.classList.remove("hidden");
 
+    $("#btnBackToModule").textContent = `← ${modulo.titulo}`;
     $("#mediaBadge").textContent = `${modulo.emoji} Clase ${clase.numero}`;
     $("#mediaTitulo").textContent = clase.titulo;
     $("#mediaSub").innerHTML = modulo.overviewMarkdown
@@ -1285,7 +1323,10 @@
     indiceActual = -1;
     mediaActual = null;
     quizRespuesta = null;
-    if (cursoActual) setHashSilencioso(hashCurso(slugCurso(cursoActual)));
+    paginaModuloId = moduloExpandidoId || null;
+    if (cursoActual) setHashSilencioso(paginaModuloId
+      ? hashModulo(slugCurso(cursoActual), paginaModuloId)
+      : hashCurso(slugCurso(cursoActual)));
     exercise.classList.add("hidden");
     mediaPanel.classList.add("hidden");
     welcome.classList.remove("hidden");
@@ -1902,6 +1943,7 @@
     $("#btnNextInline").addEventListener("click", onNext);
     $("#btnReset").addEventListener("click", onReset);
     $("#btnBackToCourse").addEventListener("click", volverAlCurso);
+    $("#btnBackToModule").addEventListener("click", volverAlCurso);
     $("#btnShareExercise").addEventListener("click", compartirEjercicioWsp);
     $("#btnExerciseLogin").addEventListener("click", mostrarLoginParaEjercicio);
 

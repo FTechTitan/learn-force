@@ -1041,6 +1041,18 @@ audio.media-el { height: 44px; background: var(--bg-soft); }
 .course-outline-copy small { color: var(--py-blue-light); font-size: 11px; }
 .course-outline-open { align-self: center; color: var(--py-blue-light); font-size: 12px; font-weight: 800; white-space: nowrap; }
 .course-empty-module { color: var(--text-dim); }
+.course-module-overview {
+  display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px;
+}
+.course-module-summary { display: grid; grid-template-columns: 42px minmax(0,1fr); gap: 14px; min-width: 0; }
+.course-module-summary strong { display: block; margin-bottom: 5px; font-size: 17px; }
+.course-module-summary p { margin: 0 0 8px; color: var(--text-dim); font-size: 13px; line-height: 1.5; }
+.course-module-summary small { color: var(--py-blue-light); font-size: 12px; font-weight: 700; }
+.course-module-overview .btn { flex: 0 0 auto; white-space: nowrap; }
+.module-description { color: var(--text-dim); }
+.module-description > :first-child { margin-top: 8px; }
+.module-description > :last-child { margin-bottom: 0; }
+.module-page .course-outline-lessons { padding-bottom: 30px; }
 
 @media (max-width: 700px) {
   .course-hero { grid-template-columns: 1fr; padding: 20px; }
@@ -1049,6 +1061,8 @@ audio.media-el { height: 44px; background: var(--bg-soft); }
   .course-program-head p { margin-top: 6px; text-align: left; }
   .course-outline-lesson { grid-template-columns: 30px minmax(0,1fr); }
   .course-outline-open { display: none; }
+  .course-module-overview { align-items: stretch; flex-direction: column; }
+  .course-module-overview .btn { width: 100%; }
 }
 .lesson-section-label {
   margin: 10px 8px 4px; padding: 7px 8px 5px;

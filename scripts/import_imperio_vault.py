@@ -340,7 +340,10 @@ def write_sql_batches(manifest: dict, output_dir: Path) -> list[Path]:
         columns = list(rows[0])
         column_sql = ", ".join(columns)
         updates = ", ".join(
-            f"{column}=excluded.{column}" for column in columns if column != conflict_key
+            f"{column}=case when {table}.summary = '' then excluded.summary else {table}.summary end"
+            if table == "course_lessons" and column == "summary"
+            else f"{column}=excluded.{column}"
+            for column in columns if column != conflict_key
         )
         record_types = ", ".join(f"{column} text" for column in columns)
         for start in range(0, len(rows), batch_size):
