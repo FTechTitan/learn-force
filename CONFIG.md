@@ -126,16 +126,20 @@ checkboxes) y selector **Acceso** en la pestaña Cursos.
 
 ### Alta de alumno (onboarding en un paso)
 
-Botón **+ Nuevo alumno** → acción `create_student`. En una sola llamada crea la
-cuenta con `auth.admin.createUser({ email_confirm: true })`, deja la solicitud
-como `approved`, inserta los grants de los cursos tildados y devuelve la
-contraseña temporal más un magic link generado con `auth.admin.generateLink()`.
+Botón **+ Nuevo alumno** → acción `create_student`. Un solo campo: el email. En
+una llamada crea la cuenta con `auth.admin.createUser({ email_confirm: true })`,
+deja la solicitud como `approved` e inserta los grants de los cursos tildados.
 
-**No se envía ningún correo, a propósito**: el proyecto no tiene SMTP propio
-(`smtp_host` vacío → mailer default de Supabase, muy limitado). `generateLink`
-solo devuelve la URL; la entrega la hacés vos por WhatsApp o el canal que sea.
-El magic link expira en 1 hora, así que para onboarding asincrónico va la
-contraseña; el link sirve cuando estás con la persona en el momento.
+**Sin contraseña y sin correo, a propósito.** El alumno entra con *Continuar con
+Google* usando ese mismo email: como la cuenta se crea con el email confirmado,
+el [identity linking automático](https://supabase.com/docs/guides/auth/auth-identity-linking)
+de Supabase engancha la identidad de Google a **esta misma cuenta**, conservando
+grants y progreso. Nada de claves temporales ni magic links (el proyecto tampoco
+tiene SMTP propio: `smtp_host` vacío → mailer default de Supabase, muy limitado).
+
+> Contrapartida: si el alumno no puede usar Google con ese email, queda sin forma
+> de entrar. En ese caso, ponerle contraseña desde el dashboard de Supabase
+> (Authentication → Users) o mandarle un recovery desde ahí.
 
 Si el email ya existe, la acción falla con un mensaje claro y remite al botón
 **Cursos** de esa fila (no pisa cuentas existentes). Los cursos se validan antes

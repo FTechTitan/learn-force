@@ -27,13 +27,6 @@ function cors(origin: string | null): Record<string, string> {
   };
 }
 
-// Contraseña temporal legible para dictar por WhatsApp: sin caracteres ambiguos.
-function contrasenaTemporal(): string {
-  const alfabeto = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(12));
-  return [...bytes].map((b) => alfabeto[b % alfabeto.length]).join("");
-}
-
 function json(body: unknown, status: number, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -195,16 +188,13 @@ Deno.serve(async (req: Request) => {
 
     // ----------------------------------------------------------------------
     //  Alta de alumno en un paso: crea la cuenta ya confirmada, la deja
-    //  aprobada, le habilita los cursos elegidos y devuelve la clave temporal
-    //  y un magic link para entregarle por fuera (el proyecto no tiene SMTP).
+    //  aprobada y le habilita los cursos elegidos. Sin contraseña: el alumno
+    //  entra con "Continuar con Google" y, como el email queda confirmado,
+    //  Supabase enlaza esa identidad a esta misma cuenta (linking automatico).
     if (action === "create_student") {
       const email = String(body.email || "").trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         return json({ error: "Email invalido" }, 400, headers);
-      }
-      const password = String(body.password || "").trim() || contrasenaTemporal();
-      if (password.length < 8) {
-        return json({ error: "La contraseña debe tener al menos 8 caracteres" }, 400, headers);
       }
       const solicitados = Array.isArray(body.course_ids) ? body.course_ids.map(String) : [];
 
@@ -218,7 +208,6 @@ Deno.serve(async (req: Request) => {
 
       const { data: creado, error: eCreate } = await admin.auth.admin.createUser({
         email,
-        password,
         email_confirm: true,
       });
       if (eCreate) {
@@ -250,17 +239,7 @@ Deno.serve(async (req: Request) => {
         if (eGrants) throw eGrants;
       }
 
-      // generateLink NO envía correo: devuelve la URL para entregarla por el canal que quieras.
-      const { data: enlace } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-
-      return json({
-        ok: true,
-        user_id: userId,
-        email,
-        password,
-        cursos: validos,
-        action_link: enlace?.properties?.action_link || null,
-      }, 200, headers);
+      return json({ ok: true, user_id: userId, email, cursos: validos }, 200, headers);
     }
 
     // ----------------------------------------------------------------------

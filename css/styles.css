@@ -795,13 +795,6 @@ body.exercise-focus .exercise-nav {
   border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px;
 }
 .grant-field input:focus { outline: none; border-color: var(--py-blue); }
-.alta-dato { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; font-size: 13px; }
-.alta-dato b { color: var(--text-dim); font-weight: 600; min-width: 130px; }
-.alta-dato code {
-  font-family: var(--mono); background: #0c0e14; border: 1px solid var(--border);
-  border-radius: 6px; padding: 4px 8px; color: var(--py-blue-light); user-select: all;
-}
-.alta-dato code.alta-link { word-break: break-all; font-size: 11px; }
 
 /* ---------- Asistente de IA ---------- */
 .ai-fab {

@@ -167,14 +167,10 @@
     ov.innerHTML = `
       <div class="grants-modal">
         <h3>Nuevo alumno</h3>
-        <p class="grant-note">Crea la cuenta ya confirmada y le habilita los cursos marcados. No se envía ningún correo: al guardar te muestro la clave y el link para que se los pases vos.</p>
+        <p class="grant-note">Crea la cuenta y le habilita los cursos marcados. El alumno entra en learn.techforce.cl con <b>Continuar con Google</b> usando ese mismo email — sin contraseña y sin aprobar nada.</p>
         <label class="grant-field">
           <span>Email</span>
           <input type="email" data-nuevo-email placeholder="alumno@mail.com" autocomplete="off">
-        </label>
-        <label class="grant-field">
-          <span>Contraseña temporal <em>(vacío = la genero yo)</em></span>
-          <input type="text" data-nuevo-pass placeholder="se genera automáticamente" autocomplete="off">
         </label>
         <div class="grants-list">${filas || '<p class="admin-loading">No hay cursos restringidos.</p>'}</div>
         <div class="grants-actions">
@@ -183,7 +179,6 @@
           <button class="btn-row" data-nuevo-cancel>Cancelar</button>
           <button class="btn btn-primary btn-sm" data-nuevo-save>Crear alumno</button>
         </div>
-        <div data-nuevo-resultado></div>
       </div>`;
     document.body.appendChild(ov);
 
@@ -196,36 +191,17 @@
 
     ov.querySelector("[data-nuevo-save]").addEventListener("click", async () => {
       const email = ov.querySelector("[data-nuevo-email]").value.trim();
-      const password = ov.querySelector("[data-nuevo-pass]").value.trim();
       if (!email) { alert("Falta el email."); return; }
       const boton = ov.querySelector("[data-nuevo-save]");
       boton.disabled = true;
       boton.textContent = "Creando…";
       try {
-        const alta = await llamar("create_student", {
+        await llamar("create_student", {
           email,
-          ...(password ? { password } : {}),
           course_ids: checks().filter((c) => c.checked).map((c) => c.value),
         });
-        ov.querySelector(".grants-list").remove();
-        ov.querySelector(".grants-actions").remove();
-        ov.querySelectorAll(".grant-field").forEach((f) => f.remove());
-        ov.querySelector("[data-nuevo-resultado]").innerHTML = `
-          <p class="grant-note">Cuenta creada con ${(alta.cursos || []).length} curso(s) habilitado(s). Copiá estos datos ahora.</p>
-          <div class="alta-dato"><b>Email</b><code>${escapar(alta.email)}</code></div>
-          <div class="alta-dato"><b>Contraseña</b><code>${escapar(alta.password)}</code></div>
-          ${alta.action_link ? `<div class="alta-dato"><b>Link de acceso directo</b><code class="alta-link">${escapar(alta.action_link)}</code></div>
-          <p class="grant-note">El link entra sin contraseña pero <b>expira en 1 hora</b>: para un onboarding asincrónico mandá la contraseña.</p>` : ""}
-          <div class="grants-actions">
-            <button class="btn-row" data-copiar>Copiar credenciales</button>
-            <span style="flex:1"></span>
-            <button class="btn btn-primary btn-sm" data-listo>Listo</button>
-          </div>`;
-        ov.querySelector("[data-copiar]").addEventListener("click", (ev) => {
-          const texto = `Email: ${alta.email}\nContraseña: ${alta.password}\nEntrá en https://learn.techforce.cl`;
-          navigator.clipboard.writeText(texto).then(() => { ev.target.textContent = "Copiado ✓"; });
-        });
-        ov.querySelector("[data-listo]").addEventListener("click", () => { cerrar(); cargarOverview(); });
+        cerrar();
+        cargarOverview();
       } catch (e) {
         alert(e.message);
         boton.disabled = false;
