@@ -124,6 +124,23 @@ publicados, así que nadie pierde acceso al aplicarla. `access_mode` arranca en
 Se administra desde el panel: columna **Cursos** en la tabla de alumnos (modal con
 checkboxes) y selector **Acceso** en la pestaña Cursos.
 
+### Alta de alumno (onboarding en un paso)
+
+Botón **+ Nuevo alumno** → acción `create_student`. En una sola llamada crea la
+cuenta con `auth.admin.createUser({ email_confirm: true })`, deja la solicitud
+como `approved`, inserta los grants de los cursos tildados y devuelve la
+contraseña temporal más un magic link generado con `auth.admin.generateLink()`.
+
+**No se envía ningún correo, a propósito**: el proyecto no tiene SMTP propio
+(`smtp_host` vacío → mailer default de Supabase, muy limitado). `generateLink`
+solo devuelve la URL; la entrega la hacés vos por WhatsApp o el canal que sea.
+El magic link expira en 1 hora, así que para onboarding asincrónico va la
+contraseña; el link sirve cuando estás con la persona en el momento.
+
+Si el email ya existe, la acción falla con un mensaje claro y remite al botón
+**Cursos** de esa fila (no pisa cuentas existentes). Los cursos se validan antes
+de crear la cuenta, para no dejar usuarios a medio armar.
+
 ### Comandos útiles
 
 ```bash
@@ -177,8 +194,9 @@ supabase secrets set OPENAI_API_KEY='sk-...'
 **Acciones**: `overview` (stats + alumnos + completados por ejercicio + cursos
 habilitados por alumno), `user_detail` (progreso + código de un alumno),
 `reset_user` (borra su progreso), `delete_user` (elimina la cuenta),
-`set_access_status` (solicitud de entrada), `set_course_grants` (cursos habilitados
-de un alumno), `set_course_access_mode` (curso abierto o restringido),
+`create_student` (alta de alumno en un paso), `set_access_status` (solicitud de
+entrada), `set_course_grants` (cursos habilitados de un alumno),
+`set_course_access_mode` (curso abierto o restringido),
 `course_catalog` / `save_course` / `save_module` / `save_item` / `delete_course_entity`.
 
 **Admin actual**: `fraanciscoponce@gmail.com`.

@@ -785,6 +785,24 @@ body.exercise-focus .exercise-nav {
 .grant-meta { color: var(--text-dim); font-size: 11px; }
 .grants-actions { display: flex; gap: 8px; align-items: center; }
 
+/* Alta de alumno */
+.admin-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.grant-field { display: block; margin-bottom: 10px; font-size: 13px; }
+.grant-field span { display: block; color: var(--text-dim); margin-bottom: 4px; }
+.grant-field em { font-style: normal; opacity: .75; }
+.grant-field input {
+  width: 100%; background: #0c0e14; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px;
+}
+.grant-field input:focus { outline: none; border-color: var(--py-blue); }
+.alta-dato { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+.alta-dato b { color: var(--text-dim); font-weight: 600; min-width: 130px; }
+.alta-dato code {
+  font-family: var(--mono); background: #0c0e14; border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px; color: var(--py-blue-light); user-select: all;
+}
+.alta-dato code.alta-link { word-break: break-all; font-size: 11px; }
+
 /* ---------- Asistente de IA ---------- */
 .ai-fab {
   position: fixed; bottom: 22px; right: 22px; z-index: 150;

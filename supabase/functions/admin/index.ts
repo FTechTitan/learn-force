@@ -27,6 +27,13 @@ function cors(origin: string | null): Record<string, string> {
   };
 }
 
+// Contraseña temporal legible para dictar por WhatsApp: sin caracteres ambiguos.
+function contrasenaTemporal(): string {
+  const alfabeto = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return [...bytes].map((b) => alfabeto[b % alfabeto.length]).join("");
+}
+
 function json(body: unknown, status: number, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -183,6 +190,76 @@ Deno.serve(async (req: Request) => {
         usuarios: usuariosEnriquecidos,
         por_ejercicio: porEjercicio,
         cursos: cursos || [],
+      }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    //  Alta de alumno en un paso: crea la cuenta ya confirmada, la deja
+    //  aprobada, le habilita los cursos elegidos y devuelve la clave temporal
+    //  y un magic link para entregarle por fuera (el proyecto no tiene SMTP).
+    if (action === "create_student") {
+      const email = String(body.email || "").trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return json({ error: "Email invalido" }, 400, headers);
+      }
+      const password = String(body.password || "").trim() || contrasenaTemporal();
+      if (password.length < 8) {
+        return json({ error: "La contraseña debe tener al menos 8 caracteres" }, 400, headers);
+      }
+      const solicitados = Array.isArray(body.course_ids) ? body.course_ids.map(String) : [];
+
+      // Valida los cursos ANTES de crear la cuenta, para no dejar usuarios a medio armar.
+      const { data: existentes, error: eExistentes } = await admin
+        .from("courses").select("id").in("id", solicitados.length ? solicitados : ["__ninguno__"]);
+      if (eExistentes) throw eExistentes;
+      const validos = (existentes || []).map((c) => c.id);
+      const invalidos = solicitados.filter((id) => !validos.includes(id));
+      if (invalidos.length) return json({ error: "Cursos inexistentes: " + invalidos.join(", ") }, 400, headers);
+
+      const { data: creado, error: eCreate } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+      if (eCreate) {
+        const yaExiste = /already|exists|registered|duplicate/i.test(eCreate.message || "");
+        return json({
+          error: yaExiste
+            ? `Ya existe una cuenta con ${email}. Usá el botón Cursos de esa fila para habilitarle cursos.`
+            : "No se pudo crear la cuenta: " + eCreate.message,
+        }, 400, headers);
+      }
+      const userId = creado.user?.id;
+      if (!userId) return json({ error: "Supabase no devolvió el usuario creado." }, 500, headers);
+
+      const ahora = new Date().toISOString();
+      const { error: eRequest } = await admin.from("course_access_requests").upsert({
+        user_id: userId,
+        email,
+        status: "approved",
+        requested_at: ahora,
+        reviewed_at: ahora,
+        reviewed_by: caller.id,
+      }, { onConflict: "user_id" });
+      if (eRequest) throw eRequest;
+
+      if (validos.length) {
+        const { error: eGrants } = await admin.from("course_grants").insert(
+          validos.map((courseId) => ({ user_id: userId, course_id: courseId, granted_by: caller.id })),
+        );
+        if (eGrants) throw eGrants;
+      }
+
+      // generateLink NO envía correo: devuelve la URL para entregarla por el canal que quieras.
+      const { data: enlace } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+
+      return json({
+        ok: true,
+        user_id: userId,
+        email,
+        password,
+        cursos: validos,
+        action_link: enlace?.properties?.action_link || null,
       }, 200, headers);
     }
 

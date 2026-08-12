@@ -153,6 +153,87 @@
     </button>`;
   }
 
+  // --- Alta de alumno en un paso -------------------------------------------
+  function abrirModalNuevoAlumno() {
+    const filas = cursosRestringidos().map((c) => `
+      <label class="grant-row">
+        <input type="checkbox" value="${escapar(c.id)}">
+        <span>${escapar(c.emoji || "📚")} ${escapar(c.title)}</span>
+        <span class="grant-meta">${c.is_published ? "" : "borrador · "}${escapar(c.id)}</span>
+      </label>`).join("");
+
+    const ov = document.createElement("div");
+    ov.className = "grants-overlay";
+    ov.innerHTML = `
+      <div class="grants-modal">
+        <h3>Nuevo alumno</h3>
+        <p class="grant-note">Crea la cuenta ya confirmada y le habilita los cursos marcados. No se envía ningún correo: al guardar te muestro la clave y el link para que se los pases vos.</p>
+        <label class="grant-field">
+          <span>Email</span>
+          <input type="email" data-nuevo-email placeholder="alumno@mail.com" autocomplete="off">
+        </label>
+        <label class="grant-field">
+          <span>Contraseña temporal <em>(vacío = la genero yo)</em></span>
+          <input type="text" data-nuevo-pass placeholder="se genera automáticamente" autocomplete="off">
+        </label>
+        <div class="grants-list">${filas || '<p class="admin-loading">No hay cursos restringidos.</p>'}</div>
+        <div class="grants-actions">
+          <button class="btn-row" data-nuevo-all>Todos los cursos</button>
+          <span style="flex:1"></span>
+          <button class="btn-row" data-nuevo-cancel>Cancelar</button>
+          <button class="btn btn-primary btn-sm" data-nuevo-save>Crear alumno</button>
+        </div>
+        <div data-nuevo-resultado></div>
+      </div>`;
+    document.body.appendChild(ov);
+
+    const checks = () => [...ov.querySelectorAll(".grants-list input[type=checkbox]")];
+    const cerrar = () => ov.remove();
+    ov.querySelector("[data-nuevo-all]").addEventListener("click", () => checks().forEach((c) => { c.checked = true; }));
+    ov.querySelector("[data-nuevo-cancel]").addEventListener("click", cerrar);
+    ov.addEventListener("click", (ev) => { if (ev.target === ov) cerrar(); });
+    ov.querySelector("[data-nuevo-email]").focus();
+
+    ov.querySelector("[data-nuevo-save]").addEventListener("click", async () => {
+      const email = ov.querySelector("[data-nuevo-email]").value.trim();
+      const password = ov.querySelector("[data-nuevo-pass]").value.trim();
+      if (!email) { alert("Falta el email."); return; }
+      const boton = ov.querySelector("[data-nuevo-save]");
+      boton.disabled = true;
+      boton.textContent = "Creando…";
+      try {
+        const alta = await llamar("create_student", {
+          email,
+          ...(password ? { password } : {}),
+          course_ids: checks().filter((c) => c.checked).map((c) => c.value),
+        });
+        ov.querySelector(".grants-list").remove();
+        ov.querySelector(".grants-actions").remove();
+        ov.querySelectorAll(".grant-field").forEach((f) => f.remove());
+        ov.querySelector("[data-nuevo-resultado]").innerHTML = `
+          <p class="grant-note">Cuenta creada con ${(alta.cursos || []).length} curso(s) habilitado(s). Copiá estos datos ahora.</p>
+          <div class="alta-dato"><b>Email</b><code>${escapar(alta.email)}</code></div>
+          <div class="alta-dato"><b>Contraseña</b><code>${escapar(alta.password)}</code></div>
+          ${alta.action_link ? `<div class="alta-dato"><b>Link de acceso directo</b><code class="alta-link">${escapar(alta.action_link)}</code></div>
+          <p class="grant-note">El link entra sin contraseña pero <b>expira en 1 hora</b>: para un onboarding asincrónico mandá la contraseña.</p>` : ""}
+          <div class="grants-actions">
+            <button class="btn-row" data-copiar>Copiar credenciales</button>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary btn-sm" data-listo>Listo</button>
+          </div>`;
+        ov.querySelector("[data-copiar]").addEventListener("click", (ev) => {
+          const texto = `Email: ${alta.email}\nContraseña: ${alta.password}\nEntrá en https://learn.techforce.cl`;
+          navigator.clipboard.writeText(texto).then(() => { ev.target.textContent = "Copiado ✓"; });
+        });
+        ov.querySelector("[data-listo]").addEventListener("click", () => { cerrar(); cargarOverview(); });
+      } catch (e) {
+        alert(e.message);
+        boton.disabled = false;
+        boton.textContent = "Crear alumno";
+      }
+    });
+  }
+
   // --- Modal de cursos habilitados por alumno ------------------------------
   function abrirModalCursos(userId, email) {
     const usuario = (ultimoOverview.usuarios || []).find((u) => u.id === userId);
@@ -480,7 +561,10 @@
       <div class="admin-section-title">Completados por ejercicio</div>
       <div class="ex-bars">${barras}</div>
 
-      <div class="admin-section-title">Alumnos</div>
+      <div class="admin-section-title admin-title-row">
+        <span>Alumnos</span>
+        <button class="btn btn-primary btn-sm" id="btnNuevoAlumno">+ Nuevo alumno</button>
+      </div>
       <table class="admin-table">
         <thead><tr><th>Email</th><th>Acceso</th><th>Cursos</th><th>Avance</th><th>Módulos</th><th>Tiempo ⏱</th><th>Preguntas 🤖</th><th>Nota predicha 📝</th><th>Última actividad</th><th>Acciones</th></tr></thead>
         <tbody>${filas || '<tr><td colspan="10" class="admin-loading">Sin alumnos.</td></tr>'}</tbody>
@@ -499,6 +583,7 @@
       b.addEventListener("click", () => cambiarAcceso(b.getAttribute("data-user"), b.getAttribute("data-access"))));
     body.querySelectorAll("[data-cursos]").forEach((b) =>
       b.addEventListener("click", () => abrirModalCursos(b.getAttribute("data-cursos"), b.getAttribute("data-email"))));
+    document.getElementById("btnNuevoAlumno").addEventListener("click", abrirModalNuevoAlumno);
   }
 
   function escapar(s) {
