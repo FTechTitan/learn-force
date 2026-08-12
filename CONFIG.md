@@ -145,6 +145,26 @@ Si el email ya existe, la acción falla con un mensaje claro y remite al botón
 **Cursos** de esa fila (no pisa cuentas existentes). Los cursos se validan antes
 de crear la cuenta, para no dejar usuarios a medio armar.
 
+### "Conecta a tu agente" por usuario
+
+Columna **Agente 🤖** en la tabla de alumnos → acción `set_agent_access`. El
+permiso vive en `auth.users.raw_app_meta_data->>'agent_access'` (app_metadata,
+**no** user_metadata: ese lo edita el propio usuario). Se eligió app_metadata en
+vez de una tabla nueva porque `courses-api` ya resuelve el usuario en cada
+request y lee el claim sin una consulta extra. Un admin siempre puede.
+
+Se aplica en tres capas:
+
+| Capa | Qué hace |
+|------|----------|
+| `js/auth-ui.js` | el enlace "Conecta a tu agente" del header nace oculto y solo se muestra si la cuenta tiene el permiso |
+| `courses-api` → `/api-keys` | crear, listar y revocar claves exige el permiso (`403 agent_access_disabled`) |
+| `courses-api` → autenticación | una request con `X-API-Key` de una cuenta deshabilitada se rechaza, así que **cortar el permiso mata también las claves ya emitidas** |
+
+**Migración**: `supabase/migrations/20260812190000_agent_access_flag.sql`. Hace
+backfill de `agent_access = true` para quien ya tenía una API key vigente, así
+nadie pierde lo que estaba usando.
+
 ### Ver la app como un alumno (impersonación)
 
 Botón **Ver como** en cada fila → acción `impersonate`. El backend genera un

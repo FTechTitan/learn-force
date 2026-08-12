@@ -137,6 +137,14 @@
     return `<span class="tag-access ${cls}">${labels[estado] || estado}</span>`;
   }
 
+  // Celda "Agente": si puede usar "Conecta a tu agente" y sus API keys.
+  function agenteCell(u) {
+    if (u.es_admin) return '<span class="tag-access ok">siempre</span>';
+    return `<button class="btn-row" data-agente="${u.id}" data-enabled="${u.agente ? "1" : "0"}">
+      <span class="tag-access ${u.agente ? "ok" : ""}">${u.agente ? "habilitado" : "no"}</span>
+    </button>`;
+  }
+
   // Cursos restringidos: los que exigen grant explícito para siquiera aparecer.
   function cursosRestringidos() {
     return cursosCatalogo.filter((c) => c.access_mode !== "open");
@@ -496,6 +504,7 @@
           <td>${u.email || "—"} ${u.es_admin ? '<span class="tag-admin">admin</span>' : ""}</td>
           <td>${accesoCell(u)}</td>
           <td>${cursosCell(u)}</td>
+          <td>${agenteCell(u)}</td>
           <td>${avanceCell(u)}</td>
           <td>${modulosCompletos(u.completados_ids)}/${modulosInfo.length}</td>
           <td>${fmtDuracion(u.segundos)}</td>
@@ -543,8 +552,8 @@
         <button class="btn btn-primary btn-sm" id="btnNuevoAlumno">+ Nuevo alumno</button>
       </div>
       <table class="admin-table">
-        <thead><tr><th>Email</th><th>Acceso</th><th>Cursos</th><th>Avance</th><th>Módulos</th><th>Tiempo ⏱</th><th>Preguntas 🤖</th><th>Nota predicha 📝</th><th>Última actividad</th><th>Acciones</th></tr></thead>
-        <tbody>${filas || '<tr><td colspan="10" class="admin-loading">Sin alumnos.</td></tr>'}</tbody>
+        <thead><tr><th>Email</th><th>Acceso</th><th>Cursos</th><th>Agente 🤖</th><th>Avance</th><th>Módulos</th><th>Tiempo ⏱</th><th>Preguntas 🤖</th><th>Nota predicha 📝</th><th>Última actividad</th><th>Acciones</th></tr></thead>
+        <tbody>${filas || '<tr><td colspan="11" class="admin-loading">Sin alumnos.</td></tr>'}</tbody>
       </table>
 
       <div id="adminDetalle"></div>`;
@@ -563,6 +572,19 @@
     document.getElementById("btnNuevoAlumno").addEventListener("click", abrirModalNuevoAlumno);
     body.querySelectorAll("[data-comover]").forEach((b) =>
       b.addEventListener("click", () => verComoAlumno(b.getAttribute("data-comover"), b.getAttribute("data-email"))));
+    body.querySelectorAll("[data-agente]").forEach((b) =>
+      b.addEventListener("click", () => cambiarAccesoAgente(b.getAttribute("data-agente"), b.getAttribute("data-enabled") !== "1")));
+  }
+
+  async function cambiarAccesoAgente(userId, habilitar) {
+    const aviso = habilitar
+      ? "¿Habilitar 'Conecta a tu agente' para este alumno? Va a poder crear claves de API y consultar el contenido de sus cursos desde un agente."
+      : "¿Deshabilitar 'Conecta a tu agente'? Las claves que ya tenga dejan de funcionar en el acto.";
+    if (!confirm(aviso)) return;
+    try {
+      await llamar("set_agent_access", { user_id: userId, enabled: habilitar });
+      cargarOverview();
+    } catch (e) { alert(e.message); }
   }
 
   // --- Ver la app como un alumno -------------------------------------------

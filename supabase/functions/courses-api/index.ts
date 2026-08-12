@@ -24,9 +24,15 @@ type AuthContext = {
   userId: string;
   email: string | null;
   isAdmin: boolean;
+  agentAccess: boolean;
   method: "jwt" | "api_key";
   keyId?: string;
 };
+
+// "Conecta a tu agente" se habilita por usuario desde el panel admin.
+function tieneAccesoAgente(appMetadata: Record<string, unknown> | null | undefined): boolean {
+  return appMetadata?.role === "admin" || appMetadata?.agent_access === true;
+}
 
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin");
@@ -80,6 +86,7 @@ async function authenticate(req: Request): Promise<AuthContext | null> {
       userId: userData.user.id,
       email: userData.user.email || null,
       isAdmin: userData.user.app_metadata?.role === "admin",
+      agentAccess: tieneAccesoAgente(userData.user.app_metadata),
       method: "api_key",
       keyId: data.id,
     };
@@ -97,6 +104,7 @@ async function authenticate(req: Request): Promise<AuthContext | null> {
     userId: data.user.id,
     email: data.user.email || null,
     isAdmin: data.user.app_metadata?.role === "admin",
+    agentAccess: tieneAccesoAgente(data.user.app_metadata),
     method: "jwt",
   };
 }
@@ -473,6 +481,9 @@ async function route(req: Request, auth: AuthContext, parts: string[]) {
 
   if (parts[0] === "api-keys") {
     if (auth.method !== "jwt") return error(req, 403, "jwt_required", "Administra tus claves usando una sesión de usuario.");
+    if (!auth.agentAccess) {
+      return error(req, 403, "agent_access_disabled", "Tu cuenta no tiene habilitada la conexión con agentes. Pedísela a un administrador.");
+    }
     if (req.method === "GET" && parts.length === 1) {
       const { data, error: queryError } = await admin.from("agent_api_keys")
         .select("id, name, key_prefix, last_used_at, expires_at, revoked_at, created_at")
@@ -616,6 +627,10 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
   const auth = await authenticate(req);
   if (!auth) return error(req, 401, "unauthorized", "Usa Authorization: Bearer <JWT> o X-API-Key: <clave personal>.");
+  // Deshabilitar la conexión con agentes corta también las claves ya emitidas.
+  if (auth.method === "api_key" && !auth.agentAccess) {
+    return error(req, 403, "agent_access_disabled", "La conexión con agentes está deshabilitada para esta cuenta.");
+  }
   const rate = await consumeRateLimit(auth);
   const rateHeaders = {
     "X-RateLimit-Limit": String(RATE_LIMIT),

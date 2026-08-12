@@ -75,6 +75,7 @@ Deno.serve(async (req: Request) => {
         creado: u.created_at,
         ultimo_login: u.last_sign_in_at,
         es_admin: (u.app_metadata as Record<string, unknown> | null)?.role === "admin",
+        agente: (u.app_metadata as Record<string, unknown> | null)?.agent_access === true,
       }));
 
       // Estado de acceso al catalogo por usuario.
@@ -240,6 +241,27 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({ ok: true, user_id: userId, email, cursos: validos }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    //  Habilita o corta "Conecta a tu agente" para un alumno. Vive en
+    //  app_metadata (el usuario no lo puede editar); al deshabilitarlo dejan de
+    //  funcionar tambien las claves que ya tenia emitidas.
+    if (action === "set_agent_access") {
+      const userId = body.user_id as string;
+      const enabled = Boolean(body.enabled);
+      if (!userId) return json({ error: "Falta user_id" }, 400, headers);
+
+      const { data: target, error: targetErr } = await admin.auth.admin.getUserById(userId);
+      if (targetErr) throw targetErr;
+      const objetivo = target.user;
+      if (!objetivo) return json({ error: "Usuario no encontrado" }, 404, headers);
+
+      // Merge explicito: pisar app_metadata entero borraria el rol admin.
+      const metadata = { ...(objetivo.app_metadata as Record<string, unknown> || {}), agent_access: enabled };
+      const { error } = await admin.auth.admin.updateUserById(userId, { app_metadata: metadata });
+      if (error) throw error;
+      return json({ ok: true, agente: enabled }, 200, headers);
     }
 
     // ----------------------------------------------------------------------

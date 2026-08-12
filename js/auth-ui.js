@@ -63,8 +63,18 @@
     return m;
   }
 
+  // "Conecta a tu agente" solo para quien lo tenga habilitado por un admin.
+  function pintarEnlaceAgente(user) {
+    const enlace = $("#agentConnectLink");
+    if (!enlace) return;
+    const meta = user?.app_metadata || {};
+    const habilitado = meta.role === "admin" || meta.agent_access === true;
+    enlace.classList.toggle("hidden", !habilitado);
+  }
+
   // Actualiza el chip de usuario en la topbar.
   function pintarSesion(user) {
+    pintarEnlaceAgente(user);
     const chip = $("#userChip");
     const btnLogin = $("#btnLogin");
     if (user) {
