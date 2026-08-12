@@ -6,7 +6,7 @@ Base URL:
 https://bipsvhxsvfzfwzufucfg.supabase.co/functions/v1/courses-api/v1
 ```
 
-La API devuelve únicamente contenido publicado y exige que el usuario tenga acceso aprobado al catálogo. Los recursos y SRT privados se entregan mediante enlaces firmados válidos durante una hora.
+La API devuelve únicamente contenido publicado de los cursos habilitados para ese usuario. El acceso es por curso: un curso abierto lo ve cualquier usuario autenticado, y un curso restringido solo quien tenga el permiso concedido por un administrador. Los cursos sin acceso no aparecen en `GET /courses`, no participan de la búsqueda y responden `404` al consultarlos directamente, de modo que su existencia no se filtra. Si el usuario no tiene ningún curso habilitado, la API responde `403 course_access_required`. Los recursos y SRT privados se entregan mediante enlaces firmados válidos durante una hora.
 
 ## Autenticación
 

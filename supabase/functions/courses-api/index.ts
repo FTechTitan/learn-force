@@ -111,11 +111,22 @@ async function consumeRateLimit(auth: AuthContext) {
   return { allowed: count <= RATE_LIMIT, remaining: Math.max(0, RATE_LIMIT - count), reset: Math.floor((new Date(windowStarted).getTime() + RATE_WINDOW_MS) / 1000) };
 }
 
-async function hasCatalogAccess(auth: AuthContext): Promise<boolean> {
-  if (auth.isAdmin) return true;
-  const { data } = await admin.from("course_access_requests")
-    .select("status").eq("user_id", auth.userId).eq("status", "approved").maybeSingle();
-  return Boolean(data);
+// Cursos publicados que este usuario puede ver: abiertos + los que tiene concedidos.
+// Un curso restringido sin grant no aparece en ninguna respuesta de la API.
+async function accessibleCourseIds(auth: AuthContext): Promise<string[]> {
+  const { data: published, error: publishedError } = await admin.from("courses")
+    .select("id, access_mode").eq("is_published", true);
+  if (publishedError) throw publishedError;
+  const courses = published || [];
+  if (auth.isAdmin) return courses.map((course) => course.id);
+
+  const { data: grants, error: grantsError } = await admin.from("course_grants")
+    .select("course_id").eq("user_id", auth.userId);
+  if (grantsError) throw grantsError;
+  const granted = new Set((grants || []).map((grant) => grant.course_id));
+  return courses
+    .filter((course) => course.access_mode === "open" || granted.has(course.id))
+    .map((course) => course.id);
 }
 
 function pathParts(req: Request): string[] {
@@ -185,12 +196,7 @@ function parseCourseIds(value: unknown): string[] | null {
   return [...new Set(normalized)];
 }
 
-async function resolveCourseScope(requested: string[] | null): Promise<CourseScope> {
-  const { data, error: queryError } = await admin.from("courses")
-    .select("id")
-    .eq("is_published", true);
-  if (queryError) throw queryError;
-  const allowed = (data || []).map((course) => course.id);
+function resolveCourseScope(requested: string[] | null, allowed: string[]): CourseScope {
   const allowedSet = new Set(allowed);
   const effective = requested ? requested.filter((courseId) => allowedSet.has(courseId)) : allowed;
   return { requested, allowed, effective };
@@ -330,7 +336,12 @@ async function indexedDocumentCount(courseIds: string[]): Promise<number> {
   return count || 0;
 }
 
-async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "semantic" | "hybrid") {
+async function searchRoute(
+  req: Request,
+  auth: AuthContext,
+  mode: "keyword" | "semantic" | "hybrid",
+  accessibleCourses: string[],
+) {
   const startedAt = performance.now();
   const body = await parseBody(req);
   const query = String(body?.query || "").trim();
@@ -347,7 +358,7 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
   if (query.length < 2 || query.length > 500) {
     return error(req, 422, "validation_error", "query debe tener entre 2 y 500 caracteres.");
   }
-  const scope = await resolveCourseScope(requestedCourseIds);
+  const scope = resolveCourseScope(requestedCourseIds, accessibleCourses);
   if (!scope.effective.length) {
     return response(req, {
       data: [],
@@ -410,7 +421,7 @@ async function searchRoute(req: Request, auth: AuthContext, mode: "keyword" | "s
   });
 }
 
-async function indexSearchBatch(req: Request, auth: AuthContext) {
+async function indexSearchBatch(req: Request, auth: AuthContext, accessibleCourses: string[]) {
   if (!auth.isAdmin) return error(req, 403, "admin_required", "Solo un administrador puede generar el indice.");
   const body = await parseBody(req);
   const limit = Math.min(128, Math.max(1, Number(body?.limit || 128)));
@@ -423,7 +434,7 @@ async function indexSearchBatch(req: Request, auth: AuthContext) {
     }
     throw caught;
   }
-  const scope = await resolveCourseScope(requestedCourseIds);
+  const scope = resolveCourseScope(requestedCourseIds, accessibleCourses);
   if (requestedCourseIds && !scope.effective.length) {
     return response(req, {
       data: { indexed: 0, remaining: 0 },
@@ -498,26 +509,29 @@ async function route(req: Request, auth: AuthContext, parts: string[]) {
     return error(req, 405, "method_not_allowed", "Método no permitido para esta ruta.");
   }
 
-  if (!(await hasCatalogAccess(auth))) return error(req, 403, "course_access_required", "El usuario no tiene acceso aprobado al catálogo.");
+  const accessibleCourses = await accessibleCourseIds(auth);
+  if (!accessibleCourses.length) return error(req, 403, "course_access_required", "El usuario no tiene cursos habilitados.");
 
   if (req.method === "POST" && parts.length === 2 && parts[0] === "search" && ["index", "index-smoke"].includes(parts[1])) {
-    return indexSearchBatch(req, auth);
+    return indexSearchBatch(req, auth, accessibleCourses);
   }
 
   if (req.method === "POST" && parts.length === 2 && parts[0] === "search" && ["keyword", "semantic", "hybrid"].includes(parts[1])) {
-    return searchRoute(req, auth, parts[1] as "keyword" | "semantic" | "hybrid");
+    return searchRoute(req, auth, parts[1] as "keyword" | "semantic" | "hybrid", accessibleCourses);
   }
 
   if (req.method === "GET" && parts.length === 1 && parts[0] === "courses") {
     const { data, error: queryError } = await admin.from("courses")
       .select("id, title, subtitle, description, emoji, media, sort_order")
-      .eq("is_published", true).order("sort_order");
+      .eq("is_published", true).in("id", accessibleCourses).order("sort_order");
     if (queryError) throw queryError;
     return response(req, { data, meta: { total: data.length } });
   }
 
   if (parts[0] === "courses" && parts[1]) {
     const courseId = parts[1];
+    // Sin acceso responde 404, no 403: un curso privado no debe delatar su existencia.
+    if (!accessibleCourses.includes(courseId)) return error(req, 404, "not_found", "Curso no encontrado.");
     const { data: course, error: courseError } = await ensureCourse(courseId);
     if (courseError) throw courseError;
     if (!course) return error(req, 404, "not_found", "Curso no encontrado.");

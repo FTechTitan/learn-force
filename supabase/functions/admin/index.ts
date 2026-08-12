@@ -85,6 +85,23 @@ Deno.serve(async (req: Request) => {
       const accesoPorUsuario: Record<string, Record<string, unknown>> = {};
       (accesos || []).forEach((r) => { accesoPorUsuario[r.user_id] = r; });
 
+      // Catalogo completo (incluye borradores) para armar la matriz de accesos.
+      // Tolera que la migracion de acceso segmentado todavia no este aplicada:
+      // el panel sigue funcionando, solo sin la columna de cursos.
+      const { data: cursos, error: eCursos } = await admin
+        .from("courses")
+        .select("id, title, emoji, is_published, access_mode, sort_order")
+        .order("sort_order", { ascending: true });
+      if (eCursos) console.warn("courses/access_mode no disponible:", eCursos.message);
+
+      // Grants explicitos por alumno.
+      const { data: grants, error: eGrants } = await admin
+        .from("course_grants")
+        .select("user_id, course_id");
+      if (eGrants) console.warn("course_grants no disponible:", eGrants.message);
+      const cursosPorUsuario: Record<string, string[]> = {};
+      (grants || []).forEach((g) => { (cursosPorUsuario[g.user_id] ||= []).push(g.course_id); });
+
       // Todo el progreso.
       const { data: prog, error: e2 } = await admin
         .from("progress")
@@ -137,6 +154,7 @@ Deno.serve(async (req: Request) => {
         acceso: u.es_admin ? "admin" : String(accesoPorUsuario[u.id]?.status || "none"),
         acceso_solicitado: accesoPorUsuario[u.id]?.requested_at || null,
         acceso_revisado: accesoPorUsuario[u.id]?.reviewed_at || null,
+        cursos: (cursosPorUsuario[u.id] || []).slice().sort(),
         completados: completadosPorUsuario[u.id] || 0,
         completados_ids: completadosIdsPorUsuario[u.id] || [],
         segundos: segundosPorUsuario[u.id] || 0,
@@ -164,7 +182,63 @@ Deno.serve(async (req: Request) => {
         },
         usuarios: usuariosEnriquecidos,
         por_ejercicio: porEjercicio,
+        cursos: cursos || [],
       }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    //  Reemplaza el set completo de cursos habilitados para un alumno.
+    if (action === "set_course_grants") {
+      const userId = body.user_id as string;
+      if (!userId) return json({ error: "Falta user_id" }, 400, headers);
+      const solicitados = Array.isArray(body.course_ids) ? body.course_ids.map(String) : null;
+      if (!solicitados) return json({ error: "course_ids debe ser un arreglo" }, 400, headers);
+
+      const { data: target, error: targetErr } = await admin.auth.admin.getUserById(userId);
+      if (targetErr) throw targetErr;
+      if (!target.user) return json({ error: "Usuario no encontrado" }, 404, headers);
+
+      // Solo cursos que existen de verdad; evita grants huerfanos por typo.
+      const { data: existentes, error: eExistentes } = await admin
+        .from("courses").select("id").in("id", solicitados.length ? solicitados : ["__ninguno__"]);
+      if (eExistentes) throw eExistentes;
+      const validos = (existentes || []).map((c) => c.id);
+      const invalidos = solicitados.filter((id) => !validos.includes(id));
+      if (invalidos.length) return json({ error: "Cursos inexistentes: " + invalidos.join(", ") }, 400, headers);
+
+      const { data: actuales, error: eActuales } = await admin
+        .from("course_grants").select("course_id").eq("user_id", userId);
+      if (eActuales) throw eActuales;
+      const actualesIds = (actuales || []).map((g) => g.course_id);
+      const aQuitar = actualesIds.filter((id) => !validos.includes(id));
+      const aAgregar = validos.filter((id) => !actualesIds.includes(id));
+
+      if (aQuitar.length) {
+        const { error: eDelete } = await admin
+          .from("course_grants").delete().eq("user_id", userId).in("course_id", aQuitar);
+        if (eDelete) throw eDelete;
+      }
+      if (aAgregar.length) {
+        const { error: eInsert } = await admin.from("course_grants").insert(
+          aAgregar.map((courseId) => ({ user_id: userId, course_id: courseId, granted_by: caller.id })),
+        );
+        if (eInsert) throw eInsert;
+      }
+      return json({ ok: true, cursos: validos }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
+    //  Cambia si un curso es abierto (todo usuario logueado) o restringido.
+    if (action === "set_course_access_mode") {
+      const courseId = String(body.course_id || "");
+      const accessMode = String(body.access_mode || "");
+      if (!courseId) return json({ error: "Falta course_id" }, 400, headers);
+      if (!["open", "restricted"].includes(accessMode)) {
+        return json({ error: "access_mode debe ser open o restricted" }, 400, headers);
+      }
+      const { error } = await admin.from("courses").update({ access_mode: accessMode }).eq("id", courseId);
+      if (error) throw error;
+      return json({ ok: true }, 200, headers);
     }
 
     // ----------------------------------------------------------------------
@@ -207,13 +281,24 @@ Deno.serve(async (req: Request) => {
         .order("sort_order", { referencedTable: "course_modules", ascending: true })
         .order("sort_order", { referencedTable: "course_modules.course_items", ascending: true });
       if (error) throw error;
-      return json({ courses: data || [] }, 200, headers);
+
+      // Cuantos alumnos tienen habilitado cada curso.
+      const { data: grants, error: eGrants } = await admin.from("course_grants").select("course_id");
+      if (eGrants) console.warn("course_grants no disponible:", eGrants.message);
+      const alumnosPorCurso: Record<string, number> = {};
+      (grants || []).forEach((g) => { alumnosPorCurso[g.course_id] = (alumnosPorCurso[g.course_id] || 0) + 1; });
+
+      return json({ courses: data || [], alumnos_por_curso: alumnosPorCurso }, 200, headers);
     }
 
     // ----------------------------------------------------------------------
     if (action === "save_course") {
       const course = body.course as Record<string, unknown>;
       if (!course?.id || !course?.title) return json({ error: "Faltan id/title del curso" }, 400, headers);
+      const accessMode = course.access_mode ? String(course.access_mode) : "restricted";
+      if (!["open", "restricted"].includes(accessMode)) {
+        return json({ error: "access_mode debe ser open o restricted" }, 400, headers);
+      }
       const payload = {
         id: String(course.id),
         title: String(course.title),
@@ -223,6 +308,7 @@ Deno.serve(async (req: Request) => {
         media: course.media || {},
         sort_order: Number(course.sort_order || 0),
         is_published: Boolean(course.is_published),
+        access_mode: accessMode,
         created_by: caller.id,
       };
       const { error } = await admin.from("courses").upsert(payload, { onConflict: "id" });

@@ -83,7 +83,16 @@ python scripts/import_imperio_vault.py --apply
 La aplicación usa exclusivamente la sesión del CLI y el proyecto enlazado; no
 requiere service keys ni secretos en variables de entorno. Los archivos se suben
 al bucket privado `imperio-agentico-content`; el frontend entrega enlaces firmados
-solo a usuarios con acceso aprobado.
+solo a usuarios con acceso al curso que referencia cada archivo.
+
+## Acceso por curso
+
+Cada curso es `open` (visible para cualquier usuario con sesión) o `restricted`
+(visible solo para los alumnos habilitados uno por uno en `course_grants`). Un
+curso restringido sin permiso no aparece en el catálogo, ni en la API de agentes,
+ni en la búsqueda. Se administra desde el panel: columna **Cursos** en la tabla de
+alumnos y selector **Acceso** en la pestaña Cursos. Detalle en
+[CONFIG.md](CONFIG.md#-acceso-segmentado-por-curso).
 
 ## Deploy a Cloudflare Pages
 

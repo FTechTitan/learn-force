@@ -13,6 +13,8 @@
   let titulosEjercicios = {}; // id -> título legible
   let modulosInfo = [];       // [{ id, titulo, emoji, ids:[...] }]
   let totalEjercicios = 0;    // total de ejercicios del curso
+  let cursosCatalogo = [];    // [{ id, title, emoji, is_published, access_mode }]
+  let ultimoOverview = {};    // última respuesta de la acción "overview"
 
   // Mapa id->título y estructura de módulos desde el curso remoto activo.
   function indexarTitulos() {
@@ -135,6 +137,82 @@
     return `<span class="tag-access ${cls}">${labels[estado] || estado}</span>`;
   }
 
+  // Cursos restringidos: los que exigen grant explícito para siquiera aparecer.
+  function cursosRestringidos() {
+    return cursosCatalogo.filter((c) => c.access_mode !== "open");
+  }
+
+  // Celda "Cursos": cuántos cursos restringidos tiene habilitados este alumno.
+  function cursosCell(u) {
+    if (u.es_admin) return '<span class="tag-access ok">todos</span>';
+    const restringidos = cursosRestringidos();
+    const habilitados = (u.cursos || []).filter((id) => restringidos.some((c) => c.id === id));
+    const cls = habilitados.length ? "ok" : "";
+    return `<button class="btn-row grants-cell" data-cursos="${u.id}" data-email="${escapar(u.email || "")}" title="Elegir a qué cursos accede">
+      <span class="tag-access ${cls}">${habilitados.length}/${restringidos.length}</span> Editar
+    </button>`;
+  }
+
+  // --- Modal de cursos habilitados por alumno ------------------------------
+  function abrirModalCursos(userId, email) {
+    const usuario = (ultimoOverview.usuarios || []).find((u) => u.id === userId);
+    const habilitados = new Set(usuario?.cursos || []);
+    const abiertos = cursosCatalogo.filter((c) => c.access_mode === "open");
+
+    const filas = cursosRestringidos().map((c) => `
+      <label class="grant-row">
+        <input type="checkbox" value="${escapar(c.id)}" ${habilitados.has(c.id) ? "checked" : ""}>
+        <span>${escapar(c.emoji || "📚")} ${escapar(c.title)}</span>
+        <span class="grant-meta">${c.is_published ? "" : "borrador · "}${escapar(c.id)}</span>
+      </label>`).join("");
+
+    const nota = abiertos.length
+      ? `<p class="grant-note">Además ve ${abiertos.length} curso(s) abierto(s) a cualquier usuario con sesión: ${
+          abiertos.map((c) => escapar(c.title)).join(", ")}.</p>`
+      : "";
+
+    const ov = document.createElement("div");
+    ov.className = "grants-overlay";
+    ov.innerHTML = `
+      <div class="grants-modal">
+        <h3>Cursos habilitados</h3>
+        <p class="grant-note">${escapar(email || "alumno")} solo verá los cursos marcados. El resto no aparece en su catálogo.</p>
+        <div class="grants-list">${filas || '<p class="admin-loading">No hay cursos restringidos.</p>'}</div>
+        ${nota}
+        <div class="grants-actions">
+          <button class="btn-row" data-grants-none>Ninguno</button>
+          <button class="btn-row" data-grants-all>Todos</button>
+          <span style="flex:1"></span>
+          <button class="btn-row" data-grants-cancel>Cancelar</button>
+          <button class="btn btn-primary btn-sm" data-grants-save>Guardar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+
+    const checks = () => [...ov.querySelectorAll(".grants-list input[type=checkbox]")];
+    ov.querySelector("[data-grants-all]").addEventListener("click", () => checks().forEach((c) => { c.checked = true; }));
+    ov.querySelector("[data-grants-none]").addEventListener("click", () => checks().forEach((c) => { c.checked = false; }));
+    ov.querySelector("[data-grants-cancel]").addEventListener("click", () => ov.remove());
+    ov.addEventListener("click", (ev) => { if (ev.target === ov) ov.remove(); });
+    ov.querySelector("[data-grants-save]").addEventListener("click", async () => {
+      const boton = ov.querySelector("[data-grants-save]");
+      boton.disabled = true;
+      boton.textContent = "Guardando…";
+      try {
+        await llamar("set_course_grants", {
+          user_id: userId,
+          course_ids: checks().filter((c) => c.checked).map((c) => c.value),
+        });
+        ov.remove();
+        cargarOverview();
+      } catch (e) {
+        alert(e.message);
+        boton.disabled = false;
+        boton.textContent = "Guardar";
+      }
+    });
+  }
+
   function abrirPanel() {
     let ov = document.getElementById("adminOverlay");
     if (!ov) {
@@ -173,23 +251,41 @@
     }
 
     const courses = data.courses || [];
+    const alumnosPorCurso = data.alumnos_por_curso || {};
+    cursosCatalogo = courses.map((c) => ({
+      id: c.id, title: c.title, emoji: c.emoji, is_published: c.is_published, access_mode: c.access_mode,
+    }));
     const rows = courses.map((c) => {
       const mods = c.course_modules || [];
       const items = mods.flatMap((m) => m.course_items || []);
+      const abierto = c.access_mode === "open";
       return `<tr>
         <td>${escapar(c.emoji || "📚")} ${escapar(c.title)}<br><span style="color:var(--text-dim);font-size:12px">${escapar(c.id)}</span></td>
         <td>${mods.length}</td>
         <td>${items.length}</td>
         <td>${c.is_published ? "Publicado" : "Borrador"}</td>
+        <td>
+          <select class="grant-mode" data-access-mode="${escapar(c.id)}">
+            <option value="restricted" ${abierto ? "" : "selected"}>Restringido</option>
+            <option value="open" ${abierto ? "selected" : ""}>Abierto</option>
+          </select>
+          <div style="color:var(--text-dim);font-size:12px;margin-top:3px">
+            ${abierto ? "Todos los usuarios con sesión" : `${alumnosPorCurso[c.id] || 0} alumno(s) habilitado(s)`}
+          </div>
+        </td>
         <td class="acciones"><button class="btn-row danger" data-del-course="${escapar(c.id)}">Borrar</button></td>
       </tr>`;
     }).join("");
 
     body.innerHTML = `
       <div class="admin-section-title">Cursos configurables</div>
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 10px">
+        <b>Restringido</b>: solo lo ven los alumnos habilitados uno por uno; para el resto el curso no existe.
+        <b>Abierto</b>: visible para cualquier usuario con sesión iniciada.
+      </p>
       <table class="admin-table">
-        <thead><tr><th>Curso</th><th>Módulos</th><th>Preguntas</th><th>Estado</th><th>Acciones</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="5" class="admin-loading">Sin cursos en Supabase.</td></tr>'}</tbody>
+        <thead><tr><th>Curso</th><th>Módulos</th><th>Preguntas</th><th>Estado</th><th>Acceso</th><th>Acciones</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="6" class="admin-loading">Sin cursos en Supabase.</td></tr>'}</tbody>
       </table>
 
       <div class="admin-detail">
@@ -218,6 +314,7 @@
       emoji: "📚",
       sort_order: 30,
       is_published: false,
+      access_mode: "restricted",
     }, null, 2);
     document.getElementById("moduleJson").value = JSON.stringify({
       id: "nuevo-modulo",
@@ -258,6 +355,25 @@
     document.getElementById("saveItemJson").addEventListener("click", () => guardarEntidadJson("save_item", "item", "itemJson"));
     body.querySelectorAll("[data-del-course]").forEach((b) =>
       b.addEventListener("click", () => borrarEntidadCurso("courses", b.getAttribute("data-del-course"))));
+    body.querySelectorAll("[data-access-mode]").forEach((select) =>
+      select.addEventListener("change", () => cambiarModoAcceso(select.getAttribute("data-access-mode"), select.value)));
+  }
+
+  async function cambiarModoAcceso(courseId, accessMode) {
+    const aviso = accessMode === "open"
+      ? `El curso ${courseId} pasará a ser visible para CUALQUIER usuario con sesión. ¿Continuar?`
+      : `El curso ${courseId} quedará restringido: solo lo verán los alumnos habilitados. ¿Continuar?`;
+    if (!confirm(aviso)) {
+      cargarCursosAdmin();
+      return;
+    }
+    try {
+      await llamar("set_course_access_mode", { course_id: courseId, access_mode: accessMode });
+      cargarCursosAdmin();
+    } catch (e) {
+      alert(e.message);
+      cargarCursosAdmin();
+    }
   }
 
   async function guardarEntidadJson(action, key, textareaId) {
@@ -298,6 +414,8 @@
       return;
     }
 
+    ultimoOverview = data;
+    cursosCatalogo = data.cursos || [];
     const t = data.totales || {};
     const usuarios = data.usuarios || [];
     const porEj = data.por_ejercicio || {};
@@ -320,6 +438,7 @@
         <tr>
           <td>${u.email || "—"} ${u.es_admin ? '<span class="tag-admin">admin</span>' : ""}</td>
           <td>${accesoCell(u)}</td>
+          <td>${cursosCell(u)}</td>
           <td>${avanceCell(u)}</td>
           <td>${modulosCompletos(u.completados_ids)}/${modulosInfo.length}</td>
           <td>${fmtDuracion(u.segundos)}</td>
@@ -363,8 +482,8 @@
 
       <div class="admin-section-title">Alumnos</div>
       <table class="admin-table">
-        <thead><tr><th>Email</th><th>Acceso</th><th>Avance</th><th>Módulos</th><th>Tiempo ⏱</th><th>Preguntas 🤖</th><th>Nota predicha 📝</th><th>Última actividad</th><th>Acciones</th></tr></thead>
-        <tbody>${filas || '<tr><td colspan="9" class="admin-loading">Sin alumnos.</td></tr>'}</tbody>
+        <thead><tr><th>Email</th><th>Acceso</th><th>Cursos</th><th>Avance</th><th>Módulos</th><th>Tiempo ⏱</th><th>Preguntas 🤖</th><th>Nota predicha 📝</th><th>Última actividad</th><th>Acciones</th></tr></thead>
+        <tbody>${filas || '<tr><td colspan="10" class="admin-loading">Sin alumnos.</td></tr>'}</tbody>
       </table>
 
       <div id="adminDetalle"></div>`;
@@ -378,6 +497,8 @@
       b.addEventListener("click", () => borrarUsuario(b.getAttribute("data-del"), b.getAttribute("data-email"))));
     body.querySelectorAll("[data-access]").forEach((b) =>
       b.addEventListener("click", () => cambiarAcceso(b.getAttribute("data-user"), b.getAttribute("data-access"))));
+    body.querySelectorAll("[data-cursos]").forEach((b) =>
+      b.addEventListener("click", () => abrirModalCursos(b.getAttribute("data-cursos"), b.getAttribute("data-email"))));
   }
 
   function escapar(s) {

@@ -311,14 +311,16 @@
   async function cargarCursosRemotos() {
     if (!window.CursosRemotos || !usuarioActual) return;
     try {
+      // El estado solo sirve para el mensaje de la solicitud: el permiso real es
+      // por curso y lo resuelve RLS, que devuelve unicamente los cursos habilitados.
       estadoAcceso = window.AccesoCursos
         ? await window.AccesoCursos.estado(usuarioActual)
         : { status: "approved" };
-      if (estadoAcceso.status !== "approved") {
+      const remotos = await window.CursosRemotos.cargarPublicados();
+      if (!remotos.length) {
         limpiarCursosRemotos();
         return;
       }
-      const remotos = await window.CursosRemotos.cargarPublicados();
       mezclarCursosRemotos(remotos);
     } catch (e) {
       console.warn("No se pudieron cargar cursos desde Supabase:", e.message || e);
@@ -695,13 +697,17 @@
 
   function pintarWelcome() {
     if (!cursoActual) {
-      const sinAcceso = usuarioActual && estadoAcceso.status !== "approved";
+      // Sin cursos visibles: RLS ya filtro por curso, asi que aca no se sabe si
+      // existen otros cursos ni cuales son. Solo se ofrece pedir habilitacion.
+      const sinAcceso = usuarioActual && !cursos.length;
       const mensaje = sinAcceso
           ? estadoAcceso.status === "pending"
             ? "Tu solicitud de acceso esta pendiente de aprobacion."
+            : estadoAcceso.status === "approved"
+            ? "Tu cuenta esta aprobada, pero todavia no tiene cursos habilitados."
             : estadoAcceso.status === "rejected"
             ? "Tu solicitud fue rechazada. Puedes volver a solicitar acceso."
-            : "Tu cuenta aun no tiene acceso al catalogo."
+            : "Tu cuenta aun no tiene cursos habilitados."
           : cursos.length
           ? "Estos cursos vienen desde Supabase. El catálogo requiere iniciar sesión."
           : "Inicia sesión para ver los cursos disponibles.";
@@ -709,11 +715,16 @@
           ? estadoAcceso.status === "pending"
             ? `<li class="access-card">
                 <strong>Solicitud enviada</strong>
-                <span>Un admin debe aprobar tu cuenta para ver los cursos.</span>
+                <span>Un admin debe habilitar tus cursos.</span>
+              </li>`
+            : estadoAcceso.status === "approved"
+            ? `<li class="access-card">
+                <strong>Sin cursos habilitados</strong>
+                <span>Un admin debe asignarte los cursos que te corresponden.</span>
               </li>`
             : `<li class="access-card">
                 <strong>Acceso requerido</strong>
-                <span>Solicita acceso y un admin habilitara tu cuenta.</span>
+                <span>Solicita acceso y un admin habilitara tus cursos.</span>
                 <button type="button" class="btn btn-primary btn-sm" data-request-course-access>Solicitar acceso</button>
               </li>`
           : cursos.length
@@ -735,7 +746,7 @@
         <h2>Elige un curso</h2>
         <p>${mensaje}</p>
         <ul class="welcome-list">${contenido}</ul>
-        <p class="loading-note" id="pyStatus">${sinAcceso ? "Solicita acceso para cargar el catálogo." : cursos.length ? "Selecciona un curso para ver su programa completo." : "Inicia sesión para cargar el catálogo."}</p>`;
+        <p class="loading-note" id="pyStatus">${sinAcceso ? "Un admin debe habilitar tus cursos." : cursos.length ? "Selecciona un curso para ver su programa completo." : "Inicia sesión para cargar el catálogo."}</p>`;
       const list = welcome.querySelector(".welcome-list");
       if (list) {
         const accessBtn = list.querySelector("[data-request-course-access]");

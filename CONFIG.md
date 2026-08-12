@@ -92,6 +92,38 @@ Site URL → `https://learn.techforce.cl`.
 
 **Migración**: `supabase/migrations/20260606015816_init_progress.sql`.
 
+### 🔐 Acceso segmentado por curso
+
+El permiso es **por curso**, no global:
+
+| Concepto | Dónde vive | Qué hace |
+|----------|-----------|----------|
+| `courses.access_mode` | columna | `open` = lo ve cualquier usuario con sesión · `restricted` = solo con grant |
+| `public.course_grants` | tabla `(user_id, course_id)` | habilita un curso restringido para un alumno |
+| `public.has_course_access(course_id)` | función | admin, o curso abierto, o grant existente |
+| `public.course_access_requests` | tabla | solicitud de entrada a la plataforma (bandeja del admin); **ya no otorga contenido** |
+
+Todas las policies de `courses`, `course_modules`, `course_items`, `course_lessons`,
+`course_lesson_contents/transcripts/resources` y del bucket privado
+`imperio-agentico-content` pasan por `has_course_access(course_id)`. Un curso
+restringido sin grant **no aparece en ninguna consulta**: ni en el catálogo, ni en
+`courses-api`, ni en la búsqueda. El alumno no puede saber que existe.
+
+Los `storage_path` son hashes de contenido (no llevan prefijo de curso), así que el
+permiso de storage se resuelve con `can_read_course_object(name)`, que busca la
+clase que referencia el archivo.
+
+**Migración**: `supabase/migrations/20260812150000_segmented_course_access.sql`.
+Hace backfill de grants para todos los alumnos ya aprobados sobre los cursos
+publicados, así que nadie pierde acceso al aplicarla. `access_mode` arranca en
+`restricted` para todos los cursos.
+
+> Ojo con `save_course`: si el JSON no trae `access_mode`, el upsert lo deja en
+> `restricted` (falla cerrado, nunca abre un curso sin querer).
+
+Se administra desde el panel: columna **Cursos** en la tabla de alumnos (modal con
+checkboxes) y selector **Acceso** en la pestaña Cursos.
+
 ### Comandos útiles
 
 ```bash
@@ -142,9 +174,12 @@ supabase secrets set OPENAI_API_KEY='sk-...'
 | Acceso a datos | `service_role` (inyectada por Supabase, **solo** en la función) — bypassa RLS |
 | Frontend | `js/admin.js` — el botón "🛠 Admin" solo aparece si tu sesión es admin |
 
-**Acciones**: `overview` (stats + alumnos + completados por ejercicio),
-`user_detail` (progreso + código de un alumno), `reset_user` (borra su progreso),
-`delete_user` (elimina la cuenta).
+**Acciones**: `overview` (stats + alumnos + completados por ejercicio + cursos
+habilitados por alumno), `user_detail` (progreso + código de un alumno),
+`reset_user` (borra su progreso), `delete_user` (elimina la cuenta),
+`set_access_status` (solicitud de entrada), `set_course_grants` (cursos habilitados
+de un alumno), `set_course_access_mode` (curso abierto o restringido),
+`course_catalog` / `save_course` / `save_module` / `save_item` / `delete_course_entity`.
 
 **Admin actual**: `fraanciscoponce@gmail.com`.
 
