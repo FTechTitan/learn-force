@@ -92,6 +92,12 @@
       return;
     }
 
+    // Viendo como alumno: la pregunta quedaria registrada a su nombre.
+    if (window.Impersonacion && window.Impersonacion.activa()) {
+      agregarMensaje("bot", "Estás viendo la app como alumno: el tutor queda deshabilitado para no registrar preguntas a su nombre.");
+      return;
+    }
+
     enviando = true;
     sendBtn.disabled = true;
     agregarMensaje("user", escapar(pregunta).replace(/\n/g, "<br>"));

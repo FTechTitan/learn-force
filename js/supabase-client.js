@@ -104,6 +104,7 @@ const ProgresoRemoto = {
 
   // Guarda (upsert) una fila de progreso de un ejercicio.
   async guardar(userId, exerciseId, { completed, code }) {
+    if (Impersonacion.activa()) return; // solo lectura mientras se mira como alumno
     const fila = { user_id: userId, exercise_id: exerciseId };
     if (completed !== undefined) fila.completed = completed;
     if (code !== undefined) fila.code = code;
@@ -113,6 +114,7 @@ const ProgresoRemoto = {
 
   // Suma segundos de tiempo activo al ejercicio (vía RPC; el server usa auth.uid()).
   async sumarTiempo(exerciseId, segundos) {
+    if (Impersonacion.activa()) return; // solo lectura mientras se mira como alumno
     const { error } = await sb.rpc("add_time_spent", {
       p_exercise_id: exerciseId,
       p_seconds: Math.round(segundos),
@@ -146,6 +148,51 @@ const PushSubscriptions = {
     });
     if (error) throw error;
     return data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+//  Impersonacion: un admin mira la app con la sesion de un alumno.
+//  Guarda los tokens del admin antes de cambiar de sesion para poder volver.
+//  Mientras dura, la app queda en SOLO LECTURA: no se escribe progreso,
+//  tiempo, pruebas ni preguntas al tutor a nombre del alumno.
+// ---------------------------------------------------------------------------
+const IMPERSONACION_KEY = "lf_impersonacion";
+
+const Impersonacion = {
+  estado() {
+    try { return JSON.parse(localStorage.getItem(IMPERSONACION_KEY) || "null"); } catch { return null; }
+  },
+
+  activa() { return Boolean(Impersonacion.estado()); },
+
+  // Recibe el token_hash de un magic link generado server-side por el panel admin.
+  async iniciar({ email, tokenHash }) {
+    const { data } = await sb.auth.getSession();
+    const sesion = data?.session;
+    if (!sesion) throw new Error("No hay sesion de admin activa.");
+    localStorage.setItem(IMPERSONACION_KEY, JSON.stringify({
+      email,
+      admin_email: sesion.user?.email || "",
+      access_token: sesion.access_token,
+      refresh_token: sesion.refresh_token,
+    }));
+    const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+    if (error) {
+      localStorage.removeItem(IMPERSONACION_KEY);
+      throw error;
+    }
+  },
+
+  async volver() {
+    const guardado = Impersonacion.estado();
+    localStorage.removeItem(IMPERSONACION_KEY);
+    if (!guardado) return;
+    const { error } = await sb.auth.setSession({
+      access_token: guardado.access_token,
+      refresh_token: guardado.refresh_token,
+    });
+    if (error) throw error;
   },
 };
 
@@ -402,6 +449,7 @@ window.Auth = Auth;
 window.ProgresoRemoto = ProgresoRemoto;
 window.PushSubscriptions = PushSubscriptions;
 window.AccesoCursos = AccesoCursos;
+window.Impersonacion = Impersonacion;
 window.CursosRemotos = CursosRemotos;
 window.LeccionesRemotas = LeccionesRemotas;
 window.AgentApi = AgentApi;

@@ -261,7 +261,7 @@
 
     // Guarda el resultado (si está logueado).
     const user = await window.Auth.usuarioActual();
-    if (user) {
+    if (user && !(window.Impersonacion && window.Impersonacion.activa())) {
       try {
         await sb.from("exam_results").insert({
           user_id: user.id, exam_id: prueba.id, version: versionActual,

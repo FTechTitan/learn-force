@@ -508,6 +508,7 @@
               <button class="btn-row" data-access="rejected" data-user="${u.id}">Rechazar</button>
               <button class="btn-row danger" data-access="pending" data-user="${u.id}">Revocar</button>
             `}
+            ${u.es_admin ? "" : `<button class="btn-row" data-comover="${u.id}" data-email="${escapar(u.email || "")}">Ver como</button>`}
             <button class="btn-row" data-ver="${u.id}">Ver</button>
             <button class="btn-row danger" data-reset="${u.id}" data-email="${u.email}">Reset</button>
             <button class="btn-row danger" data-del="${u.id}" data-email="${u.email}">Borrar</button>
@@ -560,6 +561,50 @@
     body.querySelectorAll("[data-cursos]").forEach((b) =>
       b.addEventListener("click", () => abrirModalCursos(b.getAttribute("data-cursos"), b.getAttribute("data-email"))));
     document.getElementById("btnNuevoAlumno").addEventListener("click", abrirModalNuevoAlumno);
+    body.querySelectorAll("[data-comover]").forEach((b) =>
+      b.addEventListener("click", () => verComoAlumno(b.getAttribute("data-comover"), b.getAttribute("data-email"))));
+  }
+
+  // --- Ver la app como un alumno -------------------------------------------
+  async function verComoAlumno(userId, email) {
+    if (!confirm(`Vas a ver la app como ${email}.\n\nQueda en solo lectura: no se guarda progreso, tiempo, pruebas ni preguntas al tutor a su nombre. Volvés con la barra de abajo.`)) return;
+    try {
+      const alta = await llamar("impersonate", { user_id: userId });
+      await window.Impersonacion.iniciar({ email: alta.email, tokenHash: alta.token_hash });
+      location.href = location.pathname; // recarga limpia, sin hash de otro curso
+    } catch (e) {
+      alert(e.message || "No se pudo iniciar la vista como alumno.");
+    }
+  }
+
+  // Barra fija mientras dura la impersonación. Se pinta siempre que haya estado
+  // guardado, aunque la sesión activa ya no sea admin.
+  function pintarBarraImpersonacion() {
+    const estado = window.Impersonacion && window.Impersonacion.estado();
+    const previa = document.getElementById("impersonationBar");
+    if (!estado) { if (previa) previa.remove(); return; }
+    if (previa) return;
+
+    const barra = document.createElement("div");
+    barra.id = "impersonationBar";
+    barra.className = "impersonation-bar";
+    barra.innerHTML = `
+      <span class="imp-dot"></span>
+      <span>Viendo como <b>${escapar(estado.email)}</b> · solo lectura</span>
+      <button class="btn-row" id="impersonationBack">Volver a superadmin</button>`;
+    document.body.appendChild(barra);
+    document.getElementById("impersonationBack").addEventListener("click", async (ev) => {
+      ev.target.disabled = true;
+      ev.target.textContent = "Volviendo…";
+      try {
+        await window.Impersonacion.volver();
+        location.href = location.pathname;
+      } catch (e) {
+        alert("No se pudo restaurar tu sesión: " + (e.message || e) + "\nIniciá sesión de nuevo como admin.");
+        ev.target.disabled = false;
+        ev.target.textContent = "Volver a superadmin";
+      }
+    });
   }
 
   function escapar(s) {
@@ -680,6 +725,7 @@
   // --- Init ----------------------------------------------------------------
   function init() {
     indexarTitulos();
+    pintarBarraImpersonacion();
     chequearAdmin();
     if (window.AuthUI) window.AuthUI.onUsuario(() => chequearAdmin());
   }

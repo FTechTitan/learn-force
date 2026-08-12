@@ -145,6 +145,30 @@ Si el email ya existe, la acción falla con un mensaje claro y remite al botón
 **Cursos** de esa fila (no pisa cuentas existentes). Los cursos se validan antes
 de crear la cuenta, para no dejar usuarios a medio armar.
 
+### Ver la app como un alumno (impersonación)
+
+Botón **Ver como** en cada fila → acción `impersonate`. El backend genera un
+magic link del alumno con `auth.admin.generateLink()` y devuelve **solo el
+`hashed_token`** (no manda correo); el navegador lo consume con
+`sb.auth.verifyOtp({ token_hash, type: "magiclink" })` y queda con la sesión de
+ese alumno. Los tokens del admin se guardan antes en `localStorage`
+(`lf_impersonacion`) para restaurarlos con `setSession()` al volver.
+
+Mientras dura, una barra fija abajo a la izquierda muestra a quién estás viendo
+y el botón **Volver a superadmin**. La barra se pinta desde `js/admin.js` aunque
+la sesión activa ya no sea admin, y sobrevive recargas y cierres de pestaña.
+
+**Queda todo en solo lectura**, porque la sesión es real y cualquier escritura
+quedaría a nombre del alumno. Los cuatro puntos de escritura están bloqueados:
+`ProgresoRemoto.guardar`, `ProgresoRemoto.sumarTiempo` (`js/supabase-client.js`),
+el insert de `exam_results` (`js/exam-ui.js`) y las preguntas al tutor
+(`js/assistant.js`, que además avisa por qué está deshabilitado).
+
+Límites deliberados: no se puede impersonar a otro admin ni a uno mismo, y la
+acción deja rastro con `console.log` en los logs de la función. La actividad que
+sí se registre en el backend aparece como del alumno, no como del admin: no es
+una impersonación invisible ni pretende serlo.
+
 ### Comandos útiles
 
 ```bash

@@ -243,6 +243,35 @@ Deno.serve(async (req: Request) => {
     }
 
     // ----------------------------------------------------------------------
+    //  Impersonacion: devuelve el token_hash de un magic link del alumno para
+    //  que el panel cambie de sesion y el admin vea la app con sus ojos.
+    //  No envia correo: el hash se consume con verifyOtp en el navegador.
+    if (action === "impersonate") {
+      const userId = body.user_id as string;
+      if (!userId) return json({ error: "Falta user_id" }, 400, headers);
+      if (userId === caller.id) return json({ error: "Ya estás en tu propia sesión." }, 400, headers);
+
+      const { data: target, error: targetErr } = await admin.auth.admin.getUserById(userId);
+      if (targetErr) throw targetErr;
+      const objetivo = target.user;
+      if (!objetivo?.email) return json({ error: "El usuario no tiene email" }, 404, headers);
+      if ((objetivo.app_metadata as Record<string, unknown> | null)?.role === "admin") {
+        return json({ error: "No se puede impersonar a otro admin." }, 403, headers);
+      }
+
+      const { data: enlace, error: eLink } = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email: objetivo.email,
+      });
+      if (eLink) throw eLink;
+      const tokenHash = enlace?.properties?.hashed_token;
+      if (!tokenHash) return json({ error: "Supabase no devolvió el token del enlace." }, 500, headers);
+
+      console.log(`impersonate: ${caller.email} -> ${objetivo.email}`);
+      return json({ ok: true, email: objetivo.email, token_hash: tokenHash }, 200, headers);
+    }
+
+    // ----------------------------------------------------------------------
     //  Reemplaza el set completo de cursos habilitados para un alumno.
     if (action === "set_course_grants") {
       const userId = body.user_id as string;
