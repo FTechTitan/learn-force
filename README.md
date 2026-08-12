@@ -94,6 +94,13 @@ ni en la búsqueda. Se administra desde el panel: columna **Cursos** en la tabla
 alumnos y selector **Acceso** en la pestaña Cursos. Detalle en
 [CONFIG.md](CONFIG.md#-acceso-segmentado-por-curso).
 
+## Documentación
+
+- [CONFIG.md](CONFIG.md) — infraestructura, Supabase, panel admin y acceso por curso.
+- [docs/agent-api.md](docs/agent-api.md) — API REST de cursos para agentes.
+- [docs/subtitulos-hotmart-vimeo.md](docs/subtitulos-hotmart-vimeo.md) — cómo recuperar las
+  transcripciones de los cursos importados desde Hotmart, que sí existen como subtítulos de Vimeo.
+
 ## Deploy a Cloudflare Pages
 
 Proyecto estático sin build:
