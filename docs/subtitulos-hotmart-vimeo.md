@@ -92,31 +92,65 @@ python scripts/hotmart_subtitulos.py bajar \
 Ojo con el reporte: `yt-dlp` sale con código 0 aunque el video no tenga subtítulos, así que
 "50 ok, 0 fallos" no significa 50 archivos. Contá los `.vtt` en disco.
 
-### 5. Importar a Supabase
+### 5. Convertir los `.vtt` al formato de importación
 
-Destino: `public.course_lesson_transcripts`.
+```bash
+# necesita la lista de clases con su sort_order, para puentear vimeo_id -> lesson_id
+python scripts/vtt_a_markdown.py \
+  --vtt-dir tmp/pmp-subtitulos \
+  --manifest tmp/course-import/<curso>/manifest.json \
+  --course <curso> \
+  --lecciones tmp/lecciones.json \
+  --out tmp/vtt-markdown
+```
 
-| Columna | Valor |
-|---|---|
-| `id` | estable y derivable, p. ej. `<lesson_id>-es` |
-| `lesson_id` | FK a `course_lessons.id` (los ids son `catalog-lesson-<sha1 de 24>`, **39 caracteres**) |
-| `language` | `es` |
-| `transcript_text` | el `.vtt` convertido a texto plano, sin timestamps |
-| `storage_path` | ruta del `.vtt` en el bucket privado `imperio-agentico-content` |
-| `sort_order` | `0` |
+El puente es: `manifest.original_filename` trae el id de Vimeo entre corchetes y su `order`
+coincide con el `sort_order` de la clase en Supabase.
 
-Hay `unique (lesson_id, language)`, así que el insert va con
-`on conflict (lesson_id, language) do update`.
+> **Antes de importar, descartar los que pisarían material mejor.** El import hace upsert por
+> `(lesson_id, language)`, así que un `.vtt` autogenerado sobrescribe en silencio una
+> transcripción de Whisper de la misma clase. Consultar qué clases ya tienen transcripción y
+> borrar esos `.md` de la carpeta antes de seguir.
 
-Después del import, dos pasos fáciles de olvidar:
+### 6. Importar a Supabase
 
-1. `update public.course_lessons set has_transcript = true where …` — el frontend usa ese flag para
-   mostrar la pestaña de transcripción.
-2. `select * from public.rebuild_course_search_documents(array['<curso>']);` — sin esto las
-   transcripciones no aparecen en la búsqueda.
+```bash
+export SUPABASE_ACCESS_TOKEN="$SUPABASE_PROGRA_UAI_PAT"
+python scripts/importar_transcripciones.py \
+  --dir tmp/vtt-markdown \
+  --project-ref bipsvhxsvfzfwzufucfg --dry-run   # sacar --dry-run para escribir
+```
+
+Sirve igual para los `.md` que genera el worker de Granolazo (mismo formato con frontmatter).
+El script sube el `.md` al bucket privado, hace upsert en `course_lesson_transcripts`, marca
+`has_transcript` y reconstruye el índice de búsqueda — los dos últimos son los pasos que es fácil
+olvidar: sin el flag no aparece la pestaña en el frontend, y sin el índice no aparece en la
+búsqueda. La service_role key la pide a la Management API con el PAT y nunca la imprime.
+
+Destino: `public.course_lesson_transcripts`, con `unique (lesson_id, language)`. Los `lesson_id`
+son `catalog-lesson-<sha1 de 24>`, **39 caracteres** — truncarlos al copiarlos de un listado es un
+error real que ya ocurrió y hace que ningún `update` matchee.
 
 El acceso a los archivos del bucket se resuelve por curso: ver
 [CONFIG.md](../CONFIG.md#-acceso-segmentado-por-curso).
+
+### 7. Exportar al vault de Obsidian del curso
+
+Cada curso tiene su propio vault en `C:/obsidian/` (`vault-imperio-agentico-skool`,
+`CAR-skool-vault`, `vault-poderosa-maquina-pacientes`), como repo **privado** en `FTechTitan`.
+**No mezclar con el vault personal** `~/obsidian/personal-private`.
+
+```bash
+python scripts/transcripciones_a_obsidian.py \
+  --project-ref bipsvhxsvfzfwzufucfg \
+  --course <curso> \
+  --vault "C:/obsidian/vault-<curso>" \
+  --vtt-dir tmp/vtt-markdown
+```
+
+Toma Supabase como fuente —que ya consolida Whisper y subtítulos— y escribe
+`bruto/NN_Modulo/NN_Clase.md` más un `00_INDICE.md` enlazado. Es idempotente: se vuelve a correr
+cuando el worker completa clases nuevas.
 
 ---
 
