@@ -125,20 +125,61 @@ Producto en Hotmart de PMP: `3294505`, escuela `alumnos-la-poderosa-maquina-atra
 
 ---
 
+## La API de Hotmart Club
+
+El hash no hay que sacarlo clase por clase del DOM: la API lo entrega. Base:
+
+```
+https://api-club-course-consumption-gateway-ga.cb.hotmart.com
+```
+
+| Endpoint | Devuelve |
+|---|---|
+| `GET /v2/product/basic` | datos del producto (sirve para validar el token) |
+| `GET /v1/navigation` | módulos y, dentro de cada uno, las `pages` con su `hash` |
+| `GET /v2/web/lessons/<hash>` | el detalle de la clase, **con la URL del player y su `?h=`** |
+
+Headers obligatorios: `slug`, `x-product-id`, `origin`/`referer` de hotmart.com y
+`Authorization: Bearer <access_token>`. Sin token, 401.
+
+El `access_token` se saca de un **HAR de una sesión autenticada**. Dura poco: el HAR del
+2026-07-28 ya devuelve 401, así que hay que grabar uno nuevo cada vez.
+
+### Cómo grabar el HAR
+
+1. Chrome → DevTools (F12) → pestaña **Network** → activar **Preserve log**.
+2. Navegar a una clase del curso y esperar a que **cargue el reproductor**. Esto importa: el token
+   viaja en el header `Authorization` de las llamadas a la API, y si no se carga ninguna clase no
+   queda ninguna.
+3. Click derecho sobre la lista de requests → **Save all as HAR with content**.
+
+> El HAR trae JWT, datos personales y URLs firmadas. **No subirlo a GitHub, Drive ni tickets.**
+> `tmp/` está ignorado en este repo; guardarlo ahí o fuera del repositorio.
+
+### Script
+
+`scripts/hotmart_subtitulos.py` automatiza todo y nunca imprime el token:
+
+```bash
+# HAR -> JSON con las URLs de Vimeo con hash
+python scripts/hotmart_subtitulos.py mapear \
+  --har ~/Downloads/hotmart.com.har \
+  --product-id 3294505 \
+  --slug alumnos-la-poderosa-maquina-atraer-pacientes \
+  --out tmp/pmp-vimeo-urls.json
+
+# JSON -> archivos .vtt (solo subtitulos, sin bajar video)
+python scripts/hotmart_subtitulos.py bajar \
+  --mapa tmp/pmp-vimeo-urls.json \
+  --out-dir tmp/pmp-subtitulos
+```
+
+Respeta una pausa de 1,5 s entre llamadas, como pide la guía original del método.
+
 ## Lo que falta
 
-Juntar los 64 pares `lesson_id → player.vimeo.com/video/<id>?h=<hash>`. Tres caminos, de mejor a peor:
-
-1. **El HAR de la sesión de Hotmart.** Trae todos los links completos de una. Es como se hizo la
-   primera vez.
-2. **Recorrer las 64 páginas de clase** en el navegador leyendo el DOM. Funciona seguro pero es
-   lento; requiere la ventana de Chrome en tamaño normal, porque con viewport angosto el sidebar con
-   la lista de clases no se renderiza y no hay de dónde sacar los identificadores.
-3. **Recuperar el repo `hotmart-har`** encendiendo `ftt-2b-rocket`, que además tiene los 18 `.vtt` de
-   WhatsAgenda ya descargados.
-
-Una vez que estén los pares, el resto es mecánico: descargar, convertir VTT a texto, importar,
-marcar `has_transcript` y reconstruir el índice.
+Un HAR fresco. Con eso, el resto es mecánico: correr las dos etapas del script, convertir los VTT a
+texto, importar a `course_lesson_transcripts`, marcar `has_transcript` y reconstruir el índice.
 
 ---
 
