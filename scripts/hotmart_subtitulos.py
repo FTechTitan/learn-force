@@ -41,7 +41,14 @@ import requests
 
 API_BASE = "https://api-club-course-consumption-gateway-ga.cb.hotmart.com"
 PAUSA_SEGUNDOS = 1.5  # la guia pide pocas requests por segundo
-VIMEO_RE = re.compile(r"https?://player\.vimeo\.com/video/(\d+)\?h=([A-Za-z0-9]+)")
+# El embed aparece de dos formas y solo la primera sirve para descargar. No hay
+# manera de anticiparlo por el `type` de la leccion: en PMP las 64 son CONTENT.
+#   - con hash:  player.vimeo.com/video/<id>?h=<hash>       -> yt-dlp funciona
+#   - sin hash:  player.vimeo.com/video/<id>?badge=0&...    -> 401 siempre
+# Igual capturamos el id de las segundas: es el que llevan los mp4 locales en el
+# nombre (`Titulo [<id>].mp4`), asi que sirve para mapear la clase a su archivo.
+VIMEO_CON_HASH = re.compile(r"https?://player\.vimeo\.com/video/(\d+)[^\"'\\ ]*?[?&]h=([A-Za-z0-9]+)")
+VIMEO_ID = re.compile(r"player\.vimeo\.com/video/(\d+)")
 
 
 def token_desde_har(har_path: Path) -> str:
@@ -126,13 +133,21 @@ def mapear(args: argparse.Namespace) -> int:
             time.sleep(PAUSA_SEGUNDOS)
             continue
 
-        encontrado = VIMEO_RE.search(detalle.text)
+        con_hash = VIMEO_CON_HASH.search(detalle.text)
+        solo_id = VIMEO_ID.search(detalle.text)
         resultado.append({
             **pagina,
-            "vimeo_id": encontrado.group(1) if encontrado else None,
-            "vimeo_url": encontrado.group(0) if encontrado else None,
+            "tipo": detalle.json().get("type"),
+            "vimeo_id": con_hash.group(1) if con_hash else (solo_id.group(1) if solo_id else None),
+            "vimeo_url": con_hash.group(0) if con_hash else None,
+            "descargable": bool(con_hash),
         })
-        estado = encontrado.group(1) if encontrado else "sin video"
+        if con_hash:
+            estado = con_hash.group(1)
+        elif solo_id:
+            estado = f"{solo_id.group(1)} (embed sin hash, no descargable)"
+        else:
+            estado = "sin video"
         print(f"  [{indice}/{len(paginas)}] {pagina['titulo'][:45]}: {estado}")
         time.sleep(PAUSA_SEGUNDOS)
 

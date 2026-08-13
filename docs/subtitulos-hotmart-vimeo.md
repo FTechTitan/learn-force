@@ -1,87 +1,98 @@
-# Recuperar subtítulos de los cursos importados desde Hotmart
+# Hotmart + Vimeo: cómo recuperar los subtítulos de un curso
 
-Los cursos que entraron a LearnForce desde una carpeta de Drive (`poderosa-maquina-pacientes`,
-`whatsagenda-pro`) quedaron **sin transcripciones**: `course_lesson_transcripts` está vacía para
-ellos y el `body_markdown` de cada clase es relleno del importador (~300 caracteres con el título
-repetido). Eso deja la app sin material para resúmenes por clase ni para la búsqueda semántica.
+Guía reutilizable para cualquier curso de LearnForce importado desde Hotmart. Escrita después de
+hacerlo completo sobre `poderosa-maquina-pacientes` el 2026-08-12; incluye lo que funcionó, lo que no,
+y con qué evidencia, para no repetir callejones sin salida.
 
-**La buena noticia: no hay que transcribir nada.** Los videos originales están en Vimeo y tienen
-subtítulos autogenerados en español (`es-x-autogen`, formato `.vtt`).
+**Lo primero, para calibrar expectativas:** en el caso trabajado, de 64 clases solo **13** tenían
+subtítulos. No es un problema de método — Vimeo no los generó para el resto. Verificalo temprano
+(paso 3) antes de invertir tiempo.
 
 ---
 
-## Por qué el importador concluyó que no había transcripciones
+## El problema de fondo
 
-El manifiesto (`tmp/course-import/<curso>/manifest.json`) trae esta auditoría:
+Los cursos que entraron a LearnForce desde una carpeta de Drive quedaron sin transcripciones:
+`course_lesson_transcripts` vacía y un `body_markdown` de relleno (~300 caracteres con el título
+repetido). El manifiesto del importador incluso lo audita:
 
 ```json
-"transcript_source_audit": {
-  "status": "not_found_in_original_source",
-  "checked": ["Drive folder …: 64 files, all video/mp4, no transcript-like files"]
-}
+"transcript_source_audit": { "status": "not_found_in_original_source" }
 ```
 
-La conclusión es correcta **para Drive**, pero Drive es una copia. El origen real es
-**Hotmart, con los videos servidos por Vimeo**. Se nota en el nombre de archivo, que conserva el
+Esa conclusión es correcta **para Drive**, que es una copia. El origen real es **Hotmart, con los
+videos servidos por Vimeo**, y ahí a veces sí hay subtítulos autogenerados en español
+(`es-x-autogen`, formato `.vtt`). Se reconoce el origen por el nombre del archivo, que conserva el
 patrón de `yt-dlp` con el ID de Vimeo:
 
 ```
 Bienvenida [861268366].mp4
 ```
 
-y en la nota de Obsidian que originó la importación, que documenta la ruta local
-`~/Downloads/hotmart-vimeo`.
-
 ---
 
-## El detalle que hace toda la diferencia: el `?h=`
+## Procedimiento
 
-Los videos son privados. Con la URL pelada, Vimeo responde **401**:
+### 1. Grabar el HAR
 
-```bash
-yt-dlp --list-subs "https://vimeo.com/861268366"
-# ERROR: HTTP Error 401: Unauthorized
-```
+La API de Hotmart Club exige un `access_token` y **dura poco**: un HAR de dos semanas antes devolvió
+401. Hay que grabar uno nuevo cada vez.
 
-Con el **hash de embed** que usa Hotmart, funciona sin cookies ni sesión:
+1. Chrome → DevTools (F12) → pestaña **Network** → activar **Preserve log**.
+2. Navegar a una clase del curso y esperar a que **cargue el reproductor**. Esto importa: el token
+   viaja en el header `Authorization` de las llamadas a la API, y si no se abre ninguna clase el HAR
+   no lo trae.
+3. Click derecho sobre la lista de requests → **Save all as HAR with content**.
 
-```bash
-yt-dlp --list-subs "https://player.vimeo.com/video/907868643?h=c40fb03022"
-# [info] Available subtitles for 907868643:
-# Language     Formats
-# es-x-autogen vtt, vtt, vtt
-```
+> El HAR trae JWT, datos personales y URLs firmadas. **No subirlo a GitHub, Drive ni tickets.**
+> `tmp/` está en el `.gitignore` de este repo; guardarlo ahí o fuera del repositorio.
 
-Ese hash está en el **HTML renderizado** de la página de la clase en Hotmart Club. No está en el
-HTML servido (la app es un SPA y lo resuelve en el cliente), así que hay que leerlo del DOM ya
-montado:
-
-```js
-// en la consola, sobre https://hotmart.com/es/club/<slug>/products/<id>/content/<contenido>
-document.documentElement.innerHTML.match(/player\.vimeo\.com\/video\/\d+\?h=[a-z0-9]+/i)[0]
-```
-
----
-
-## Descargar los subtítulos
-
-Con la URL completa, solo subtítulos y sin bajar video:
+### 2. Mapear las clases a sus URLs de Vimeo
 
 ```bash
-yt-dlp --write-subs --sub-langs "es.*" --skip-download \
-  -o "%(title)s [%(id)s].%(ext)s" \
-  -P ./subtitles \
-  "https://player.vimeo.com/video/<ID>?h=<HASH>"
+python scripts/hotmart_subtitulos.py mapear \
+  --har ~/Downloads/hotmart.com.har \
+  --product-id 3294505 \
+  --slug alumnos-la-poderosa-maquina-atraer-pacientes \
+  --out tmp/pmp-vimeo-urls.json
 ```
 
-> Usar **`--write-subs`**, no `--write-auto-subs`: Vimeo reporta estos como subtítulos disponibles,
-> no como auto-subs, y con el flag equivocado no baja nada aunque el listado los muestre.
+El `product-id` y el `slug` salen de la URL del curso en Hotmart Club:
+`hotmart.com/es/club/<slug>/products/<product-id>`.
 
-Resultado: `<titulo> [<id>].es-x-autogen.vtt`, que empieza con `WEBVTT`.
+El script valida el token contra `/v2/product/basic`, recorre `/v1/navigation` y consulta
+`/v2/web/lessons/<hash>` por cada clase, con pausa de 1,5 s. Nunca imprime el token.
 
----
+### 3. Medir cuántas tienen subtítulo *antes* de bajar nada
 
-## Importar a Supabase
+```bash
+python -c "
+import json
+d = json.load(open('tmp/pmp-vimeo-urls.json', encoding='utf-8'))
+print('clases:', len(d), '| descargables:', sum(1 for r in d if r['descargable']))
+"
+yt-dlp --list-subs "<una vimeo_url del JSON>"
+```
+
+Si `--list-subs` responde `has no subtitles`, ese video no tiene captions y no hay forma de
+extraerlos: hay que generarlos con ASR. Probá tres o cuatro para estimar la cobertura real.
+
+### 4. Descargar los `.vtt`
+
+```bash
+python scripts/hotmart_subtitulos.py bajar \
+  --mapa tmp/pmp-vimeo-urls.json \
+  --out-dir tmp/pmp-subtitulos
+```
+
+> Usar **`--write-subs`**, no `--write-auto-subs`: Vimeo los reporta como subtítulos disponibles, no
+> como auto-subs, y con el flag equivocado no baja nada aunque el listado los muestre. El script ya
+> lo hace bien; queda anotado porque es el error que costó una sesión entera en julio.
+
+Ojo con el reporte: `yt-dlp` sale con código 0 aunque el video no tenga subtítulos, así que
+"50 ok, 0 fallos" no significa 50 archivos. Contá los `.vtt` en disco.
+
+### 5. Importar a Supabase
 
 Destino: `public.course_lesson_transcripts`.
 
@@ -97,102 +108,100 @@ Destino: `public.course_lesson_transcripts`.
 Hay `unique (lesson_id, language)`, así que el insert va con
 `on conflict (lesson_id, language) do update`.
 
-Después del import, dos pasos que es fácil olvidar:
+Después del import, dos pasos fáciles de olvidar:
 
 1. `update public.course_lessons set has_transcript = true where …` — el frontend usa ese flag para
    mostrar la pestaña de transcripción.
-2. `select * from public.rebuild_course_search_documents(array['<curso>']);` — la búsqueda indexa el
-   texto de las transcripciones; sin esto no aparecen en los resultados.
+2. `select * from public.rebuild_course_search_documents(array['<curso>']);` — sin esto las
+   transcripciones no aparecen en la búsqueda.
 
 El acceso a los archivos del bucket se resuelve por curso: ver
 [CONFIG.md](../CONFIG.md#-acceso-segmentado-por-curso).
 
 ---
 
-## Estado y antecedentes
-
-| Curso | Videos | Subtítulos |
-|---|---|---|
-| `whatsagenda-pro` | 18 | **18/18 descargados** el 2026-07-29 → `~/Downloads/whatsagenda-pro-vimeo/subtitles` en `ftt-2b-rocket`. Nunca se importaron a Supabase. |
-| `poderosa-maquina-pacientes` | 64 | Confirmado que existen; **pendientes de descargar**. Los 64 mp4 están en `tmp/course-import/poderosa-maquina-pacientes/videos/` (8,2 GB). |
-
-El trabajo original se hizo en el repo **`hotmart-har`** (`~/github/hotmart-har` en `ftt-2b-rocket`,
-no está en GitHub). El nombre viene del método: se capturó un HAR de la sesión de Hotmart para
-obtener los links completos, que quedaron en un JSON tipo
-`/tmp/hotmart-lessons-details-<productId>`.
-
-Producto en Hotmart de PMP: `3294505`, escuela `alumnos-la-poderosa-maquina-atraer-pacientes`.
-
----
-
 ## La API de Hotmart Club
 
-El hash no hay que sacarlo clase por clase del DOM: la API lo entrega. Base:
-
-```
-https://api-club-course-consumption-gateway-ga.cb.hotmart.com
-```
+Base: `https://api-club-course-consumption-gateway-ga.cb.hotmart.com`
 
 | Endpoint | Devuelve |
 |---|---|
-| `GET /v2/product/basic` | datos del producto (sirve para validar el token) |
+| `GET /v2/product/basic` | datos del producto; sirve para validar el token |
 | `GET /v1/navigation` | módulos y, dentro de cada uno, las `pages` con su `hash` |
-| `GET /v2/web/lessons/<hash>` | el detalle de la clase, **con la URL del player y su `?h=`** |
+| `GET /v2/web/lessons/<hash>` | el detalle de la clase, con el HTML que contiene el embed |
 
 Headers obligatorios: `slug`, `x-product-id`, `origin`/`referer` de hotmart.com y
 `Authorization: Bearer <access_token>`. Sin token, 401.
 
-El `access_token` se saca de un **HAR de una sesión autenticada**. Dura poco: el HAR del
-2026-07-28 ya devuelve 401, así que hay que grabar uno nuevo cada vez.
-
-### Cómo grabar el HAR
-
-1. Chrome → DevTools (F12) → pestaña **Network** → activar **Preserve log**.
-2. Navegar a una clase del curso y esperar a que **cargue el reproductor**. Esto importa: el token
-   viaja en el header `Authorization` de las llamadas a la API, y si no se carga ninguna clase no
-   queda ninguna.
-3. Click derecho sobre la lista de requests → **Save all as HAR with content**.
-
-> El HAR trae JWT, datos personales y URLs firmadas. **No subirlo a GitHub, Drive ni tickets.**
-> `tmp/` está ignorado en este repo; guardarlo ahí o fuera del repositorio.
-
-### Script
-
-`scripts/hotmart_subtitulos.py` automatiza todo y nunca imprime el token:
-
-```bash
-# HAR -> JSON con las URLs de Vimeo con hash
-python scripts/hotmart_subtitulos.py mapear \
-  --har ~/Downloads/hotmart.com.har \
-  --product-id 3294505 \
-  --slug alumnos-la-poderosa-maquina-atraer-pacientes \
-  --out tmp/pmp-vimeo-urls.json
-
-# JSON -> archivos .vtt (solo subtitulos, sin bajar video)
-python scripts/hotmart_subtitulos.py bajar \
-  --mapa tmp/pmp-vimeo-urls.json \
-  --out-dir tmp/pmp-subtitulos
-```
-
-Respeta una pausa de 1,5 s entre llamadas, como pide la guía original del método.
-
-## Lo que falta
-
-Un HAR fresco. Con eso, el resto es mecánico: correr las dos etapas del script, convertir los VTT a
-texto, importar a `course_lesson_transcripts`, marcar `has_transcript` y reconstruir el índice.
+`/v1/navigation` es además la **fuente canónica de la estructura del curso**: nombres reales de
+módulos y orden. Sirve para corregir importaciones que quedaron con nombres inventados — así se
+reestructuró PMP de 8 módulos mal numerados a los 11 reales.
 
 ---
 
-## Gotchas encontrados
+## Las dos formas del embed
 
-- **`--cookies-from-browser chrome` no sirve en Windows.** Chrome 127+ usa App-Bound Encryption y
-  falla con `Failed to decrypt with DPAPI` (yt-dlp #10927). Antes de eso falla con
-  `Could not copy Chrome cookie database` (#7271) si Chrome está abierto, y en Windows queda
-  corriendo en segundo plano aunque cierres todas las ventanas. **No hace falta pelear con esto**:
-  con el `?h=` no se necesitan cookies.
-- **El referer no reemplaza al hash.** `--referer https://hotmart.com/` sobre `player.vimeo.com`
-  sigue dando 401.
-- **Hotmart ya no expone un iframe de Vimeo en el árbol de accesibilidad**; el hash hay que sacarlo
-  del HTML, no buscando un `<iframe>`.
-- **Hotmart dice "57 contenidos" pero el curso tiene 64 clases.** El contador de la plataforma no
-  cuenta lo mismo; el árbol real de módulos sí da 64.
+Cada clase trae el video como un iframe dentro de su HTML, y aparece de dos maneras:
+
+```
+con hash:  player.vimeo.com/video/<id>?h=<hash>              -> descargable
+sin hash:  player.vimeo.com/video/<id>?badge=0&app_id=58479  -> 401 siempre
+```
+
+**No se puede anticipar por el `type` de la clase**: en PMP las 64 son `CONTENT` y aun así 50 traen
+hash y 14 no. Hay que mirar el HTML de cada una, que es lo que hace el script.
+
+Los videos sin hash son *unlisted con hash obligatorio*: no alcanza con el dominio. El script igual
+guarda su `vimeo_id`, porque es el que llevan los mp4 locales en el nombre (`Título [<id>].mp4`) y
+por ahí se mapea la clase a su archivo para transcribir.
+
+---
+
+## Callejones sin salida (verificados, no repetir)
+
+| Intento | Resultado |
+|---|---|
+| `yt-dlp` sobre `vimeo.com/<id>` | 401 — la URL pelada nunca funciona |
+| `player.vimeo.com/video/<id>` con `--referer` y `Origin` de hotmart | 401 |
+| `GET /config?app_id=…` por curl con dos referers distintos | **403** — el recurso existe pero rechaza el origen; confirma que el hash es obligatorio |
+| `fetch` al config desde la página de Hotmart | CORS impide leer la respuesta |
+| Capturar la request del iframe con la extensión de Chrome | no ve subframes |
+| Minar el HAR buscando hashes | solo trae los de las clases efectivamente abiertas |
+| `--cookies-from-browser chrome` en Windows | `Failed to decrypt with DPAPI` (yt-dlp #10927): Chrome 127+ usa App-Bound Encryption. Antes falla con `Could not copy Chrome cookie database` (#7271) si Chrome está abierto — y en Windows sigue corriendo en segundo plano aunque cierres las ventanas. **Con el `?h=` no se necesitan cookies.** |
+| Buscar pistas de subtítulos en los mp4 locales | `video_probe` muestra solo h264 + aac, sin pista de texto |
+| API oficial `api.vimeo.com/videos/<id>/texttracks` | solo responde al dueño del video, que es el autor del curso |
+
+**La única vía que queda para los embeds sin hash**: grabar un HAR con *Preserve log* mientras se
+**reproduce** cada una de esas clases. DevTools sí captura subframes, así que la request del iframe
+al config queda registrada. Evaluá si vale la pena: con una tasa de captions del 26%, abrir 14 clases
+a mano rinde unos 3 o 4 archivos.
+
+---
+
+## Estado por curso
+
+| Curso | Clases | Subtítulos |
+|---|---|---|
+| `poderosa-maquina-pacientes` | 64 | **13 descargados** en `tmp/pmp-subtitulos/`. Cubren completos el Módulo 7 (3/3), el Módulo 8 (6/6) y el BONO FanPage (4/4) — que son las clases más largas, así que en volumen de texto pesan mucho más que su proporción. 37 accesibles sin captions, 14 con embed sin hash. **Sin importar a Supabase todavía.** |
+| `whatsagenda-pro` | 18 | **18/18 descargados** el 2026-07-29 → `~/Downloads/whatsagenda-pro-vimeo/subtitles` en `ftt-2b-rocket`. **Sin importar a Supabase todavía.** |
+
+El trabajo original se hizo en el repo **`hotmart-har`** (`~/github/hotmart-har` en `ftt-2b-rocket`,
+no está en GitHub): ahí viven `guia-hotmart-api.md` y `procedimiento-realizado-hotmart.md`. Los `.md`
+y `.json` de ese repo guardan `vimeo_id` pero **no** los `?h=`: se sanitizaron a propósito por higiene
+de secretos, así que no sirven para descargar.
+
+---
+
+## Cuando no hay subtítulos: ASR
+
+Los mp4 están en `tmp/course-import/<curso>/videos/` (8,2 GB y 20,6 h en el caso de PMP), así que no
+hay que bajar nada. Opciones, en orden de conveniencia:
+
+- **Granolazo**: `scripts/learnforce-granolazo-transcribe.py` está hecho exactamente para esto y corre
+  en el worker host, no en el PC de trabajo. Es la vía por defecto.
+- **OpenAI** vía la skill `transcribe-audio` en modo rápido: ~US$0,006 por minuto.
+- **faster-whisper local**: gratis, pero ≈1x tiempo real en CPU. No correrlo en el equipo de trabajo
+  sin confirmación explícita.
+
+El puente entre una clase y su archivo es el `vimeo_id` del JSON del paso 2, que aparece entre
+corchetes en el nombre del mp4.
