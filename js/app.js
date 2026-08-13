@@ -81,12 +81,37 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260809-module-pages-2");
-        let refrescadoPorSw = false;
+        swRegistration = await navigator.serviceWorker.register("/sw.js?v=20260812-video-progress");
+
+        // La recarga la decide el usuario: recargar solo porque hay versión
+        // nueva corta la clase que esté viendo.
+        let recargaAceptada = false;
+        let yaRecargado = false;
+
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refrescadoPorSw) return;
-          refrescadoPorSw = true;
+          if (!recargaAceptada || yaRecargado) return;
+          yaRecargado = true;
           window.location.reload();
+        });
+
+        const ofrecerActualizacion = (worker) => {
+          if (!worker) return;
+          mostrarAvisoActualizacion(() => {
+            recargaAceptada = true;
+            worker.postMessage({ type: "SKIP_WAITING" });
+          });
+        };
+
+        if (swRegistration.waiting) ofrecerActualizacion(swRegistration.waiting);
+        swRegistration.addEventListener("updatefound", () => {
+          const nuevo = swRegistration.installing;
+          if (!nuevo) return;
+          nuevo.addEventListener("statechange", () => {
+            // Sin controller es la primera instalación: no hay nada que avisar.
+            if (nuevo.state === "installed" && navigator.serviceWorker.controller) {
+              ofrecerActualizacion(nuevo);
+            }
+          });
         });
       } catch (e) {
         console.warn("No se pudo registrar el service worker", e);
@@ -384,7 +409,14 @@
   }
 
   // Al iniciar/cerrar sesión: fusiona el progreso local con el de la nube.
+  // Repinta buena parte de la app, así que solo debe correr cuando la sesión
+  // cambió de verdad; si no, un refresh de token reiniciaría el video en curso.
+  let usuarioSincronizado;
   async function sincronizarConRemoto(user) {
+    const userId = user ? user.id : null;
+    if (usuarioSincronizado !== undefined && usuarioSincronizado === userId) return;
+    usuarioSincronizado = userId;
+
     usuarioActual = user;
     if (!user) {
       // Logout: el progreso local queda como "invitado" en este dispositivo.
@@ -823,8 +855,8 @@
         <div class="media-slot">
           ${
             it.kind === "video"
-              ? `<video class="media-el" controls preload="metadata" playsinline></video>`
-              : `<audio class="media-el" controls preload="metadata"></audio>`
+              ? `<video class="media-el" data-video-key="${escaparHtml(it.src)}" controls preload="metadata" playsinline></video>`
+              : `<audio class="media-el" data-video-key="${escaparHtml(it.src)}" controls preload="metadata"></audio>`
           }
           <div class="media-pending hidden">
             🎬 <b>Próximamente.</b> Esta clase se está generando.
@@ -847,6 +879,8 @@
       });
       el.src = items[i].src; // setear src después del listener para captar el error
     });
+
+    if (window.VideoProgress) window.VideoProgress.attach(cont);
   }
 
   function urlEmbedMedia(url) {
@@ -1012,6 +1046,7 @@
             type="button"
             class="media-class-button"
             data-embed-src="${embed.src}"
+            data-embed-kind="${escaparHtml(embed.kind)}"
             data-embed-title="${escaparHtml(title)}">
             <span class="media-class-number">Clase ${i + 1}</span>
             <span class="media-class-title">${escaparHtml(title)}</span>
@@ -1028,14 +1063,27 @@
       const holder = section.querySelector(".media-player-shell");
       section.querySelectorAll(".media-class-button").forEach((button) => button.classList.remove("active"));
       btn.classList.add("active");
+
+      const embedClase = {
+        src: btn.getAttribute("data-embed-src"),
+        kind: btn.getAttribute("data-embed-kind") || "",
+      };
+      const claveVideo = embedClase.src;
+      const src = window.VideoProgress
+        ? window.VideoProgress.prepararSrc(embedClase, claveVideo)
+        : embedClase.src;
+
       holder.innerHTML = `
         <div class="media-player-title">${escaparHtml(btn.getAttribute("data-embed-title") || "Clase en video")}</div>
         <iframe
           title="${escaparHtml(btn.getAttribute("data-embed-title") || "Recurso embebido")}"
-          src="${btn.getAttribute("data-embed-src")}"
+          src="${escaparHtml(src)}"
+          data-video-key="${escaparHtml(claveVideo)}"
+          data-video-kind="${escaparHtml(embedClase.kind)}"
           loading="lazy"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           allowfullscreen></iframe>`;
+      if (window.VideoProgress) window.VideoProgress.attach(holder);
     });
 
     cont.appendChild(section);
@@ -1134,12 +1182,20 @@
     if (!clase.embed) {
       return `<p><a class="media-pres-link" href="${escaparHtml(clase.videoUrl)}" target="_blank" rel="noopener">Abrir video</a></p>`;
     }
+    // La clave es estable por lección: así el video vuelve donde quedó aunque
+    // se repinte el panel o se cierre la pestaña.
+    const claveVideo = clase.id || clase.embed.src;
+    const src = window.VideoProgress
+      ? window.VideoProgress.prepararSrc(clase.embed, claveVideo)
+      : clase.embed.src;
     return `
       <div class="media-player-shell">
         <div class="media-player-title">${escaparHtml(clase.titulo)}</div>
         <iframe
           title="${escaparHtml(clase.titulo)}"
-          src="${escaparHtml(clase.embed.src)}"
+          src="${escaparHtml(src)}"
+          data-video-key="${escaparHtml(claveVideo)}"
+          data-video-kind="${escaparHtml(clase.embed.kind)}"
           loading="lazy"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           allowfullscreen></iframe>
@@ -1195,6 +1251,7 @@
       return;
     }
     container.innerHTML = `<div class="lesson-flow">${video}${contenido}${recursos}${transcripciones}</div>`;
+    if (window.VideoProgress) window.VideoProgress.attach(container);
   }
 
   async function abrirClaseMedia(moduloId, classId) {
@@ -1202,6 +1259,15 @@
     if (!modulo) return;
     const clase = clasesMediaModulo(modulo).find((c) => c.id === classId);
     if (!clase) return;
+
+    // Si esta misma clase ya está en pantalla no se vuelve a pintar: recrear el
+    // <iframe> reinicia el video. Pasa, por ejemplo, cuando Supabase reemite el
+    // evento de sesión al volver a la pestaña.
+    const teoriaActual = $("#mediaTeoria");
+    const yaVisible = mediaActual === `${moduloId}:${classId}`
+      && !mediaPanel.classList.contains("hidden")
+      && teoriaActual.children.length > 0;
+    if (yaVisible) return;
 
     document.body.classList.remove("exercise-focus");
     ejercicioActual = null;
@@ -1236,6 +1302,7 @@
       }
     } else if (clase.embed) {
       teoria.innerHTML = `<section class="drive-embeds class-video-view">${renderVideoLeccion({ ...clase, videoUrl: clase.href })}</section>`;
+      if (window.VideoProgress) window.VideoProgress.attach(teoria);
     }
 
     renderSidebar();
@@ -1761,6 +1828,25 @@
     t.textContent = texto;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2200);
+  }
+
+  // Aviso persistente de versión nueva. No se recarga solo: el alumno decide
+  // cuándo, para no perder el punto del video ni el código a medio escribir.
+  function mostrarAvisoActualizacion(alAceptar) {
+    if (document.getElementById("updateBanner")) return;
+    const banner = document.createElement("div");
+    banner.className = "update-banner";
+    banner.id = "updateBanner";
+    banner.innerHTML = `
+      <span>Hay una versión nueva de la app.</span>
+      <button type="button" class="btn-mini" data-update-apply>Actualizar</button>
+      <button type="button" class="btn-mini btn-mini-ghost" data-update-dismiss aria-label="Cerrar">✕</button>`;
+    banner.querySelector("[data-update-apply]").addEventListener("click", () => {
+      banner.remove();
+      alAceptar();
+    });
+    banner.querySelector("[data-update-dismiss]").addEventListener("click", () => banner.remove());
+    document.body.appendChild(banner);
   }
 
   // --- Botón Siguiente -----------------------------------------------------

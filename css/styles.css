@@ -495,6 +495,18 @@ textarea.guided-input { resize: vertical; min-height: 72px; }
 }
 @keyframes pop { from { transform: translateX(-50%) scale(.85); opacity: 0; } }
 
+/* Aviso de versión nueva: nunca recarga solo, lo decide el alumno. */
+.update-banner {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-card); color: var(--text);
+  border: 1px solid var(--border); border-radius: 99px;
+  padding: 8px 10px 8px 18px; font-size: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.45);
+  animation: pop .3s ease; z-index: 120; max-width: calc(100vw - 32px);
+}
+.update-banner .btn-mini-ghost { background: transparent; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 760px) {
   .layout { grid-template-columns: 1fr; }

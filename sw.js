@@ -1,4 +1,4 @@
-const CACHE_NAME = "techforce-learn-v24";
+const CACHE_NAME = "techforce-learn-v25";
 
 const APP_SHELL = [
   "/",
@@ -18,16 +18,19 @@ const APP_SHELL = [
   "/js/exam-ui.js",
   "/js/whiteboard.js",
   "/js/voice-tools.js",
+  "/js/video-progress.js",
   "/assets/pwa/icon-192.png",
   "/assets/pwa/icon-512.png",
   "/assets/pwa/favicon-64.png"
 ];
 
+// Ojo: no se llama skipWaiting() acá. Si el worker nuevo toma el control solo,
+// la página se recarga en caliente y el alumno pierde el punto del video. La
+// versión nueva queda esperando y la app ofrece actualizar cuando el usuario
+// quiera (mensaje SKIP_WAITING).
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
   );
 });
 
@@ -91,6 +94,12 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
+
+  if (data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+
   if (data.type !== "SHOW_NOTIFICATION") return;
 
   const title = data.title || "TechForce Learn";

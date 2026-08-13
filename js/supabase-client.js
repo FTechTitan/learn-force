@@ -61,8 +61,16 @@ const Auth = {
     await sb.auth.signOut();
   },
 
-  // Notifica cambios de sesión (login / logout / refresh).
+  // Notifica cambios de sesión (login / logout).
+  //
+  // Supabase reemite eventos (TOKEN_REFRESHED, y a veces SIGNED_IN) cada vez que
+  // la pestaña vuelve a ser visible: al minimizar y restaurar Chrome, al volver
+  // de otra ventana, o cuando el token se renueva solo. Propagar esos avisos
+  // hacía que la app se repintara entera y el video embebido volviera a cero,
+  // así que solo se avisa cuando el usuario realmente cambió.
   onCambio(callback) {
+    let ultimoUserId; // undefined = todavía no se emitió nada
+
     sb.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
         const pending = localStorage.getItem(AUTH_REDIRECT_STORAGE_KEY);
@@ -79,7 +87,12 @@ const Auth = {
           }
         }
       }
-      callback(session?.user || null);
+
+      const user = session?.user || null;
+      const userId = user ? user.id : null;
+      if (ultimoUserId !== undefined && ultimoUserId === userId) return;
+      ultimoUserId = userId;
+      callback(user);
     });
   },
 };
